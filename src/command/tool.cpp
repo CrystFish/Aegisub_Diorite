@@ -32,6 +32,7 @@
 #include "command.h"
 
 #include "../compat.h"
+#include "../dialog_localization.h"
 #include "../dialog_manager.h"
 #include "../dialog_styling_assistant.h"
 #include "../dialog_translation.h"
@@ -101,6 +102,17 @@ struct tool_line_select final : public Command {
 
 	void operator()(agi::Context *c) override {
 		ShowSelectLinesDialog(c);
+	}
+};
+
+struct tool_localization final : public Command {
+	CMD_NAME("tool/localization")
+	STR_MENU("&Localization Match...")
+	STR_DISP("Localization Match")
+	STR_HELP("Match the current line against game localization files and replace its text with the localized result")
+
+	void operator()(agi::Context *c) override {
+		ShowLocalizationDialog(c);
 	}
 };
 
@@ -320,6 +332,7 @@ namespace cmd {
 		reg(agi::make_unique<tool_export>());
 		reg(agi::make_unique<tool_font_collector>());
 		reg(agi::make_unique<tool_line_select>());
+		reg(agi::make_unique<tool_localization>());
 		reg(agi::make_unique<tool_ocr_image_to_text>());
 		reg(agi::make_unique<tool_ocr_detect_regions>());
 		reg(agi::make_unique<tool_resampleres>());

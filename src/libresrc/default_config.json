@@ -518,6 +518,19 @@
 				"Include Blank" : false
 			}
 		},
+		"Localization" : {
+			"Files" : "",
+			"Fuzzy" : true,
+			"Ignore Case" : true,
+			"Ignore Punctuation" : true,
+			"Ignore Tags" : true,
+			"Last" : {
+				"X" : -1,
+				"Y" : -1
+			},
+			"Maximized" : false,
+			"Threshold" : 0.7
+		},
 		"Kanji Timer" : {
 			"Interpolation" : true
 		},
