@@ -98,6 +98,19 @@ bool TryCast(json::UnknownElement const& el, T& out) {
 	}
 }
 
+// json::Array/Object contain move-only json::UnknownElement values, so they
+// cannot be copy-assigned. Return a const reference instead and let the caller
+// iterate it in place.
+template<typename T>
+T const* TryCastRef(json::UnknownElement const& el) {
+	try {
+		return &static_cast<T const&>(el);
+	}
+	catch (...) {
+		return nullptr;
+	}
+}
+
 bool IsString(json::UnknownElement const& el) {
 	json::String s;
 	return TryCast(el, s);
@@ -166,15 +179,15 @@ void WalkJson(LocalizationFile& f, json::UnknownElement const& el,
 		return;
 	}
 
-	json::Array array;
-	if (TryCast(el, array)) {
-		for (auto const& child : array)
+	if (auto const* array = TryCastRef<json::Array>(el)) {
+		for (auto const& child : *array)
 			WalkJson(f, child, path, depth + 1);
 		return;
 	}
 
-	json::Object object;
-	if (!TryCast(el, object)) return;
+	auto const* object_ptr = TryCastRef<json::Object>(el);
+	if (!object_ptr) return;
+	auto const& object = *object_ptr;
 
 	std::string record_key = FindStringField(object, {"key", "id"});
 
