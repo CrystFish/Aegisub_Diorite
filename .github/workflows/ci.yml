@@ -14,6 +14,8 @@ jobs:
   build:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
+    # push 自动触发时只跑 Windows MSVC Release；手动触发（workflow_dispatch）和 PR 仍可跑全部 job
+    if: github.event_name != 'push' || matrix.config.name == 'Windows MSVC Release'
 
     strategy:
       fail-fast: false
