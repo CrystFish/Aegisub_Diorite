@@ -1,7 +1,9 @@
 diff --git a/meson.build b/meson.build
-index 2e9f3ab..7e1c21d 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -1 +1 @@
+@@ -413,4 +413,4 @@
+ # `libass_dep` comes from subdir('libass')
 -meson.override_dependency('libass', libass_dep)
 +# meson.override_dependency('libass', libass_dep)
+ 
+ if default_library != 'static' and host_system != 'windows'
