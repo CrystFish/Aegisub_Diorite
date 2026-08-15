@@ -21,6 +21,7 @@
 #include "ass_file.h"
 #include "charset_detect.h"
 #include "compat.h"
+#include "dialog_manager.h"
 #include "format.h"
 #include "include/aegisub/context.h"
 #include "options.h"
