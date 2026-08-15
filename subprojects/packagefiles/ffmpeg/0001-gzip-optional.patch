@@ -1,0 +1,10 @@
+diff --git a/meson.build b/meson.build
+--- a/meson.build
++++ b/meson.build
+@@ -2575,5 +2575,5 @@
+ if conf.get('zlib') == 1
+   conf.set10('zlib_gzip', true)
+-  gzip_exe = find_program('gzip', native: true)
++  gzip_exe = find_program('gzip', native: true, required: false)
+   conf.set10('gzip', gzip_exe.found())
+ else

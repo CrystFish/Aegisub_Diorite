@@ -21,6 +21,8 @@ tools/repack-thes-dict.dSYM
 build*/
 subprojects/avisynth
 subprojects/bestsource/
+subprojects/checkasm/
+subprojects/checkasm.wrap
 subprojects/boost*/
 subprojects/cairo*
 subprojects/dav1d
@@ -34,6 +36,8 @@ subprojects/googletest-*
 subprojects/harfbuzz
 subprojects/icu
 subprojects/libass
+subprojects/libassmod/
+subprojects/libassmod-mangetsu/
 subprojects/libffi*
 subprojects/libpng-*
 subprojects/luajit
@@ -47,3 +51,4 @@ subprojects/hunspell-*
 subprojects/uchardet-*
 subprojects/vapoursynth
 subprojects/xxHash-*
+subprojects/.wraplock
