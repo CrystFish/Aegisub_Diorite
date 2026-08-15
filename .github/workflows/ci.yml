@@ -11,12 +11,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  # push 自动触发时只运行 Windows MSVC Release；
+  # 手动触发（workflow_dispatch）和 PR 触发时会额外运行其余构建（wx master、Ubuntu Debug/Release、AppImage）
+  build-windows-release:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
-    # push 自动触发时只跑 Windows MSVC Release；手动触发（workflow_dispatch）和 PR 仍可跑全部 job
-    if: github.event_name != 'push' || matrix.config.name == 'Windows MSVC Release'
-
     strategy:
       fail-fast: false
       matrix:
@@ -26,85 +25,28 @@ jobs:
             msvc: true
             buildtype: release
             args: >-
-              -Ddefault_library=static 
-              --force-fallback-for=zlib,harfbuzz,freetype2,fribidi,libpng 
-              -Dfreetype2:harfbuzz=disabled 
-              -Dharfbuzz:freetype=disabled 
-              -Dharfbuzz:cairo=disabled 
-              -Dharfbuzz:glib=disabled 
-              -Dharfbuzz:gobject=disabled
-              -Dharfbuzz:tests=disabled
-              -Dharfbuzz:docs=disabled
-              -Dharfbuzz:icu=disabled
-              -Dfribidi:tests=false
-              -Dfribidi:docs=false
-              -Dlibass:fontconfig=disabled
-              -Dffmpeg:libdav1d=enabled
-              -Davisynth=enabled
-              -Dbestsource=enabled
-              -Dvapoursynth=enabled
-              -Dpaddleocr=enabled
-              -Dopencv=enabled
-              -Dwith_mangetsu=true
-          - name: Windows MSVC Release (wx master)
-            os: windows-latest
-            msvc: true
-            buildtype: release
-            args: >-
-              -Ddefault_library=static 
-              --force-fallback-for=zlib,harfbuzz,freetype2,fribidi,libpng 
-              -Dfreetype2:harfbuzz=disabled 
-              -Dharfbuzz:freetype=disabled 
-              -Dharfbuzz:cairo=disabled 
-              -Dharfbuzz:glib=disabled 
-              -Dharfbuzz:gobject=disabled
-              -Dharfbuzz:tests=disabled
-              -Dharfbuzz:docs=disabled
-              -Dharfbuzz:icu=disabled
-              -Dfribidi:tests=false
-              -Dfribidi:docs=false
-              -Dlibass:fontconfig=disabled
-              -Dffmpeg:libdav1d=enabled
-              -Davisynth=enabled
-              -Dbestsource=enabled
-              -Dvapoursynth=enabled
-              -Dpaddleocr=enabled
-              -Dwx_version='3.3.1'
-              -Dopencv=enabled
-              -Dwith_mangetsu=true
-          #- {
-          #  name: Windows MinGW,
-          #  os: windows-latest,
-          #  msvc: false
-          #}
-          - {
-            name: Ubuntu Debug,
-            os: ubuntu-22.04,
-            buildtype: debugoptimized,
-            args: ''
-          }
-          - {
-            name: Ubuntu Release,
-            os: ubuntu-22.04,
-            buildtype: release,
-            args: ''
-          }
-          - name: Ubuntu AppImage
-            os: ubuntu-22.04
-            buildtype: release
-            appimage: true
-            # distro ffms is currently broken
-            args: >-
-              --prefix=/usr
-              -Dbuild_appimage=true
               -Ddefault_library=static
-              --force-fallback-for=ffms2
+              --force-fallback-for=zlib,harfbuzz,freetype2,fribidi,libpng
+              -Dfreetype2:harfbuzz=disabled
+              -Dharfbuzz:freetype=disabled
+              -Dharfbuzz:cairo=disabled
+              -Dharfbuzz:glib=disabled
+              -Dharfbuzz:gobject=disabled
+              -Dharfbuzz:tests=disabled
+              -Dharfbuzz:docs=disabled
+              -Dharfbuzz:icu=disabled
+              -Dfribidi:tests=false
+              -Dfribidi:docs=false
+              -Dlibass:fontconfig=disabled
               -Dffmpeg:libdav1d=enabled
               -Davisynth=enabled
               -Dbestsource=enabled
               -Dvapoursynth=enabled
+              -Dpaddleocr=enabled
+              -Dopencv=enabled
+              -Dwith_mangetsu=true
 
-    steps:
+    steps: &build-steps
       - uses: actions/checkout@v4
         with:
           fetch-depth: '0'
@@ -182,7 +124,7 @@ jobs:
 
       - name: Build
         run: meson compile -C build
-      
+
       - name: Run test
         run: meson test -C build --verbose "gtest main"
 
@@ -249,15 +191,13 @@ jobs:
           name: ${{ matrix.config.name }} - installer
           path: build/Aegisub-*.exe
           if-no-files-found: error
-      
+
       - name: Upload artifacts - portable.zip
         uses: actions/upload-artifact@v4
         if: matrix.config.os == 'windows-latest'
         with:
           name: ${{ matrix.config.name }} - portable
           path: build/aegisub-portable-64.zip
-      
-
 
       # Linux artifacts (AppImage)
       - name: Generate AppImage
@@ -282,3 +222,71 @@ jobs:
           name: ${{ matrix.config.name }}
           path: appimage/*.AppImage
           if-no-files-found: error
+
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    if: github.event_name != 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - name: Windows MSVC Release (wx master)
+            os: windows-latest
+            msvc: true
+            buildtype: release
+            args: >-
+              -Ddefault_library=static
+              --force-fallback-for=zlib,harfbuzz,freetype2,fribidi,libpng
+              -Dfreetype2:harfbuzz=disabled
+              -Dharfbuzz:freetype=disabled
+              -Dharfbuzz:cairo=disabled
+              -Dharfbuzz:glib=disabled
+              -Dharfbuzz:gobject=disabled
+              -Dharfbuzz:tests=disabled
+              -Dharfbuzz:docs=disabled
+              -Dharfbuzz:icu=disabled
+              -Dfribidi:tests=false
+              -Dfribidi:docs=false
+              -Dlibass:fontconfig=disabled
+              -Dffmpeg:libdav1d=enabled
+              -Davisynth=enabled
+              -Dbestsource=enabled
+              -Dvapoursynth=enabled
+              -Dpaddleocr=enabled
+              -Dwx_version='3.3.1'
+              -Dopencv=enabled
+              -Dwith_mangetsu=true
+          #- {
+          #  name: Windows MinGW,
+          #  os: windows-latest,
+          #  msvc: false
+          #}
+          - {
+            name: Ubuntu Debug,
+            os: ubuntu-22.04,
+            buildtype: debugoptimized,
+            args: ''
+          }
+          - {
+            name: Ubuntu Release,
+            os: ubuntu-22.04,
+            buildtype: release,
+            args: ''
+          }
+          - name: Ubuntu AppImage
+            os: ubuntu-22.04
+            buildtype: release
+            appimage: true
+            # distro ffms is currently broken
+            args: >-
+              --prefix=/usr
+              -Dbuild_appimage=true
+              -Ddefault_library=static
+              --force-fallback-for=ffms2
+              -Dffmpeg:libdav1d=enabled
+              -Davisynth=enabled
+              -Dbestsource=enabled
+              -Dvapoursynth=enabled
+
+    steps: *build-steps
