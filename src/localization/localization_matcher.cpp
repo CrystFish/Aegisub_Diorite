@@ -355,6 +355,7 @@ std::vector<MatchResult> Match(std::string const& subtitle_text,
 					if (entry.first == item->file || entry.second == direct_replacement)
 						continue;
 					MatchResult cross = base;
+					cross.file = entry.first;
 					cross.replacement = entry.second;
 					cross.origin = "key \"" + item->key + "\" in " + entry.first;
 					emit(cross);

@@ -59,7 +59,8 @@ TEST(lagi_localization, NormalizeCase) {
 TEST(lagi_localization, Similarity) {
 	EXPECT_EQ(Similarity("hello", "hello"), 1.0);
 	EXPECT_DOUBLE_EQ(Similarity("abc", "abd"), 2.0 / 3.0);
-	EXPECT_EQ(Similarity("hello", "world"), 0.0);
+	EXPECT_DOUBLE_EQ(Similarity("hello", "world"), 0.2);
+	EXPECT_EQ(Similarity("abcde", "vwxyz"), 0.0);
 	EXPECT_EQ(Similarity("", ""), 1.0);
 	EXPECT_EQ(Similarity("", "hello"), 0.0);
 }
