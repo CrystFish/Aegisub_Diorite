@@ -112,6 +112,26 @@ function Assert-FileHash {
     }
 }
 
+function Find-SevenZip {
+    $cmd = Get-Command 7z -ErrorAction SilentlyContinue
+    if ($cmd -and $cmd.CommandType -eq 'Application') {
+        return $cmd.Source
+    }
+
+    $candidates = @(
+        "C:\Program Files\7-Zip\7z.exe",
+        "C:\Program Files (x86)\7-Zip\7z.exe",
+        "$env:LOCALAPPDATA\Programs\7-Zip\7z.exe",
+        "C:\ProgramData\chocolatey\bin\7z.exe"
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate) {
+            return $candidate
+        }
+    }
+    return $null
+}
+
 function Assert-FileLength {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -904,8 +924,19 @@ if (Test-Path -LiteralPath $ExtractDir) {
 }
 New-Item -ItemType Directory -Path $ExtractDir -Force | Out-Null
 
-7z x $ArchivePath "-o$ExtractDir" -y
-if (!$?) { Exit $LASTEXITCODE }
+$SevenZip = Find-SevenZip
+if ($SevenZip) {
+    & $SevenZip x $ArchivePath "-o$ExtractDir" -y
+    if (!$?) { Exit $LASTEXITCODE }
+}
+else {
+    # Windows ships a libarchive-based tar that can read 7-Zip archives.
+    Write-Host "7-Zip not found; extracting $ArchiveName with the built-in tar."
+    tar -xf $ArchivePath -C $ExtractDir
+    if (!$?) {
+        throw "Failed to extract $ArchiveName. Install 7-Zip (winget install 7zip.7zip) and rerun."
+    }
+}
 
 $Exe = Get-ChildItem -LiteralPath $ExtractDir -Recurse -File |
     Where-Object { $_.Name -in @("PaddleOCR-json.exe", "PaddleOCR_json.exe") } |
