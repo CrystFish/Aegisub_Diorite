@@ -47,6 +47,7 @@
 
 #include <wx/checkbox.h>
 #include <wx/button.h>
+#include <wx/combobox.h>
 #include <wx/filedlg.h>
 #include <wx/listbox.h>
 #include <wx/listctrl.h>
@@ -116,6 +117,9 @@ struct DialogLocalization::Impl {
 	wxCheckBox *tags_check = nullptr;
 	wxCheckBox *punct_check = nullptr;
 	wxCheckBox *case_check = nullptr;
+	wxCheckBox *sentence_check = nullptr;
+	wxTextCtrl *regex_ctrl = nullptr;
+	wxComboBox *language_combo = nullptr;
 	wxSpinCtrlDouble *threshold_spin = nullptr;
 	wxListBox *files_box = nullptr;
 	wxListCtrl *results_list = nullptr;
@@ -180,7 +184,29 @@ DialogLocalization::Impl::Impl(DialogLocalization *dialog, agi::Context *c)
 	threshold_spin = new wxSpinCtrlDouble(dialog, -1, "", wxDefaultPosition, wxSize(70, -1),
 		wxSP_ARROW_KEYS, 0.5, 1.0, 0.7, 0.05);
 	options_sizer->Add(threshold_spin, 0, wxALIGN_CENTER_VERTICAL);
+	options_sizer->AddSpacer(12);
+	options_sizer->Add(new wxStaticText(dialog, -1, _("Preferred language:")),
+		0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 4);
+	language_combo = new wxComboBox(dialog, -1, "", wxDefaultPosition, wxSize(110, -1),
+		wxArrayString(), wxCB_READONLY);
+	language_combo->Append(wxS("中文"));
+	language_combo->Append(wxS("English"));
+	language_combo->Append(wxS("日本語"));
+	language_combo->Append(wxS("한국어"));
+	language_combo->Append(wxS("Русский"));
+	options_sizer->Add(language_combo, 0, wxALIGN_CENTER_VERTICAL);
 	options_box->Add(options_sizer, 0, wxEXPAND | wxALL, 4);
+
+	auto options_sizer2 = new wxBoxSizer(wxHORIZONTAL);
+	sentence_check = new wxCheckBox(dialog, -1, _("Split by sentences"));
+	sentence_check->SetToolTip(_("Split segments at sentence endings (。.!?…). Turn this off to keep whole entries as single segments."));
+	regex_ctrl = new wxTextCtrl(dialog, -1, "", wxDefaultPosition, wxSize(240, -1));
+	regex_ctrl->SetToolTip(_("Split segments wherever this regular expression matches; the matched text is removed. For example, use \\{[^}]*\\} to break at text tags such as {*1} or {TA7}. Invalid patterns are ignored."));
+	options_sizer2->Add(sentence_check, 0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 12);
+	options_sizer2->Add(new wxStaticText(dialog, -1, _("Split regex:")),
+		0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 4);
+	options_sizer2->Add(regex_ctrl, 1, wxALIGN_CENTER_VERTICAL);
+	options_box->Add(options_sizer2, 0, wxEXPAND | wxALL, 4);
 	main_sizer->Add(options_box, 0, wxEXPAND | wxLEFT | wxRIGHT, 5);
 
 	auto files_box_sizer = new wxStaticBoxSizer(wxVERTICAL, dialog, _("Localization files"));
@@ -231,6 +257,9 @@ DialogLocalization::Impl::Impl(DialogLocalization *dialog, agi::Context *c)
 	punct_check->SetValue(OPT_GET("Tool/Localization/Ignore Punctuation")->GetBool());
 	case_check->SetValue(OPT_GET("Tool/Localization/Ignore Case")->GetBool());
 	threshold_spin->SetValue(OPT_GET("Tool/Localization/Threshold")->GetDouble());
+	language_combo->SetValue(to_wx(OPT_GET("Tool/Localization/Language")->GetString()));
+	sentence_check->SetValue(OPT_GET("Tool/Localization/Split Sentences")->GetBool());
+	regex_ctrl->SetValue(to_wx(OPT_GET("Tool/Localization/Split Regex")->GetString()));
 
 	add_button->Bind(wxEVT_BUTTON, &Impl::OnAddFiles, this);
 	remove_button->Bind(wxEVT_BUTTON, &Impl::OnRemoveFile, this);
@@ -243,6 +272,9 @@ DialogLocalization::Impl::Impl(DialogLocalization *dialog, agi::Context *c)
 	punct_check->Bind(wxEVT_CHECKBOX, &Impl::OnOptionsChanged, this);
 	case_check->Bind(wxEVT_CHECKBOX, &Impl::OnOptionsChanged, this);
 	threshold_spin->Bind(wxEVT_SPINCTRLDOUBLE, &Impl::OnOptionsChanged, this);
+	language_combo->Bind(wxEVT_COMBOBOX, &Impl::OnOptionsChanged, this);
+	sentence_check->Bind(wxEVT_CHECKBOX, &Impl::OnOptionsChanged, this);
+	regex_ctrl->Bind(wxEVT_TEXT, &Impl::OnOptionsChanged, this);
 	results_list->Bind(wxEVT_LIST_ITEM_ACTIVATED, &Impl::OnListActivated, this);
 
 	LoadPersistedFiles();
@@ -257,6 +289,9 @@ localization::MatchOptions DialogLocalization::Impl::CurrentOptions() const {
 	options.ignore_punctuation = punct_check->GetValue();
 	options.ignore_case = case_check->GetValue();
 	options.threshold = threshold_spin->GetValue();
+	options.preferred_language = from_wx(language_combo->GetValue());
+	options.split_sentences = sentence_check->GetValue();
+	options.split_regex = from_wx(regex_ctrl->GetValue());
 	return options;
 }
 
@@ -266,6 +301,9 @@ void DialogLocalization::Impl::SaveOptions() {
 	OPT_SET("Tool/Localization/Ignore Punctuation")->SetBool(punct_check->GetValue());
 	OPT_SET("Tool/Localization/Ignore Case")->SetBool(case_check->GetValue());
 	OPT_SET("Tool/Localization/Threshold")->SetDouble(threshold_spin->GetValue());
+	OPT_SET("Tool/Localization/Language")->SetString(from_wx(language_combo->GetValue()));
+	OPT_SET("Tool/Localization/Split Sentences")->SetBool(sentence_check->GetValue());
+	OPT_SET("Tool/Localization/Split Regex")->SetString(from_wx(regex_ctrl->GetValue()));
 
 	std::string joined;
 	for (auto const& path : paths) {

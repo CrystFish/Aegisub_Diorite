@@ -6860,3 +6860,158 @@ msgstr ""
 msgid "This will install Aegisub {#BUILD_GIT_VERSION_STRING} on your computer.%n%nAegisub is covered by the GNU General Public License version 2. This means you may use the application for any purpose without charge, but that no warranties of any kind are given either.%n%nSee the Aegisub website for information on obtaining the source code."
 msgstr ""
 
+#: ../src/dialog_localization.cpp:514 ../src/subs_edit_box.cpp:418
+#: ../src/command/tool.cpp:111
+msgid "Localization Match"
+msgstr ""
+
+#: ../src/command/tool.cpp:110
+msgid "&Localization Match..."
+msgstr ""
+
+#: ../src/command/tool.cpp:112
+msgid ""
+"Match the current line against game localization files and replace its text "
+"with the localized result"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:169
+msgid "Match options"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:171
+msgid "Fuzzy match"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:172
+msgid "Ignore text tags"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:174
+msgid "Ignore case"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:180
+msgid "Minimum similarity:"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:186
+msgid "Preferred language:"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:201
+msgid "Split by sentences"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:202
+msgid ""
+"Split segments at sentence endings (。.!?…). Turn this off to keep whole "
+"entries as single segments."
+msgstr ""
+
+#: ../src/dialog_localization.cpp:204
+msgid ""
+"Split segments wherever this regular expression matches; the matched text is "
+"removed. For example, use \\{[^}]*\\} to break at text tags such as {*1} or "
+"{TA7}. Invalid patterns are ignored."
+msgstr ""
+
+#: ../src/dialog_localization.cpp:206
+msgid "Split regex:"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:212
+msgid "Localization files"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:215
+msgid "Add Files..."
+msgstr ""
+
+#: ../src/dialog_localization.cpp:225
+msgid "Results"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:229
+msgid "Source"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:230
+msgid "Matched text"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:231
+msgid "Localized text"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:232
+msgid "Origin"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:237
+msgid "Replace Line"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:238
+msgid "Insert at Caret"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:239
+msgid "Copy"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:380
+msgid "No active subtitle line."
+msgstr ""
+
+#: ../src/dialog_localization.cpp:358
+msgid "  [failed to load]"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:423
+msgid "%d matches from %d files (%d entries)"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:426
+msgid ", %d file(s) failed to load"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:431
+msgid "Choose localization files"
+msgstr ""
+
+#: ../src/dialog_localization.cpp:477
+msgid "Select a result first."
+msgstr ""
+
+#: ../src/dialog_localization.cpp:484
+msgid "No active subtitle line is selected."
+msgstr ""
+
+#: ../src/dialog_localization.cpp:490
+msgid "replace line with localization result"
+msgstr ""
+
+#: ../src/subs_edit_box.cpp:419
+msgid ""
+"Show matching localization results for the current line and replace the line "
+"text directly. Files and options are configured in the Localization Match "
+"dialog."
+msgstr ""
+
+#: ../src/subs_edit_box.cpp:450
+msgid "Matching localization results for the current line"
+msgstr ""
+
+#: ../src/subs_edit_box.cpp:451
+msgid "Refresh"
+msgstr ""
+
+#: ../src/subs_edit_box.cpp:1612
+msgid "No localization files configured"
+msgstr ""
+
+#: ../src/subs_edit_box.cpp:1614
+msgid "%d matches"
+msgstr ""
+

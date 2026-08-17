@@ -443,6 +443,7 @@
 		},
 		"Provider" : "libass",
 		"Show Original": false,
+		"Localization Match": false,
 		"Better View": true,
 		"Time Edit" : {
 			"Insert Mode" : true

@@ -41,13 +41,17 @@
 #include "ass_dialogue.h"
 #include "ass_file.h"
 #include "base_grid.h"
+#include "charset_detect.h"
 #include "command/command.h"
 #include "compat.h"
 #include "dialog_style_editor.h"
+#include "format.h"
 #include "flyweight_hash.h"
 #include "include/aegisub/context.h"
 #include "include/aegisub/hotkey.h"
 #include "initial_line_state.h"
+#include "localization/localization_loader.h"
+#include "localization/localization_matcher.h"
 #include "options.h"
 #include "placeholder_ctrl.h"
 #include "project.h"
@@ -55,16 +59,20 @@
 #include "selection_controller.h"
 #include "subs_edit_ctrl.h"
 #include "text_selection_controller.h"
+#include "text_file_reader.h"
 #include "timeedit_ctrl.h"
 #include "tooltip_manager.h"
 #include "utils.h"
 #include "validators.h"
 
 #include <libaegisub/character_count.h>
+#include <libaegisub/exception.h>
+#include <libaegisub/fs.h>
 #include <libaegisub/make_unique.h>
 #include <libaegisub/util.h>
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <functional>
 #include <set>
@@ -114,6 +122,96 @@ void time_edit_char_hook(wxKeyEvent &event) {
 	}
 	else
 		event.Skip();
+}
+
+std::string ReplaceAll(std::string s, std::string const& from, std::string const& to) {
+	if (from.empty()) return s;
+	size_t pos = 0;
+	while ((pos = s.find(from, pos)) != std::string::npos) {
+		s.replace(pos, from.size(), to);
+		pos += to.size();
+	}
+	return s;
+}
+
+/// Convert plain text to ASS text, escaping real line breaks as \N.
+std::string AssEscapeNewlines(std::string s) {
+	s = ReplaceAll(std::move(s), "\r\n", "\\N");
+	s = ReplaceAll(std::move(s), "\r", "\\N");
+	return ReplaceAll(std::move(s), "\n", "\\N");
+}
+
+std::string PathUtf8(agi::fs::path const& path) {
+	return from_wx(wxString(path.wstring()));
+}
+
+std::string ReadLocalizationFile(agi::fs::path const& path, std::string& error) {
+	try {
+		std::string encoding = CharSetDetect::GetEncoding(path);
+		TextFileReader reader(path, encoding, false);
+		std::string content;
+		while (reader.HasMoreLines()) {
+			content += reader.ReadLineFromFile();
+			content += "\n";
+		}
+		return content;
+	}
+	catch (agi::Exception const& e) {
+		error = e.GetMessage();
+		return {};
+	}
+}
+
+/// Localization files saved in the Localization Match dialog options.
+std::vector<agi::fs::path> GetLocalizationPaths() {
+	std::vector<agi::fs::path> paths;
+	std::string saved = OPT_GET("Tool/Localization/Files")->GetString();
+	size_t start = 0;
+	while (start <= saved.size()) {
+		size_t end = saved.find('\n', start);
+		if (end == std::string::npos) end = saved.size();
+		std::string item = saved.substr(start, end - start);
+		if (!item.empty()) {
+			wxString wide = to_wx(item);
+			agi::fs::path path(std::wstring(wide.wc_str()));
+			if (agi::fs::FileExists(path)) paths.push_back(path);
+		}
+		if (end == saved.size()) break;
+		start = end + 1;
+	}
+	return paths;
+}
+
+localization::MatchOptions GetLocalizationOptions() {
+	localization::MatchOptions options;
+	options.fuzzy = OPT_GET("Tool/Localization/Fuzzy")->GetBool();
+	options.ignore_tags = OPT_GET("Tool/Localization/Ignore Tags")->GetBool();
+	options.ignore_punctuation = OPT_GET("Tool/Localization/Ignore Punctuation")->GetBool();
+	options.ignore_case = OPT_GET("Tool/Localization/Ignore Case")->GetBool();
+	options.threshold = OPT_GET("Tool/Localization/Threshold")->GetDouble();
+	options.preferred_language = OPT_GET("Tool/Localization/Language")->GetString();
+	options.split_sentences = OPT_GET("Tool/Localization/Split Sentences")->GetBool();
+	options.split_regex = OPT_GET("Tool/Localization/Split Regex")->GetString();
+	return options;
+}
+
+std::vector<localization::LocalizationFile> LoadLocalizationFiles(std::vector<agi::fs::path> const& paths) {
+	std::vector<localization::LocalizationFile> files;
+	for (auto const& path : paths) {
+		localization::LocalizationFile file;
+		file.name = PathUtf8(path.filename());
+		std::string error;
+		std::string content = ReadLocalizationFile(path, error);
+		if (!error.empty()) {
+			file.ok = false;
+			file.error = error;
+		}
+		else {
+			file = localization::LoadContent(content, file.name, PathUtf8(path.extension()));
+		}
+		files.push_back(std::move(file));
+	}
+	return files;
 }
 
 // Passing a pointer-to-member directly to a function sometimes does not work
@@ -320,6 +418,12 @@ SubsEditBox::SubsEditBox(wxWindow *parent, agi::Context *context)
 	middle_right_sizer->Add(better_view_box, wxSizerFlags().Expand());
 	better_view_box->SetValue(better_view_enabled_);
 
+	localization_box = new wxCheckBox(this, -1, _("Localization Match"));
+	localization_box->SetToolTip(_("Show matching localization results for the current line and replace the line text directly. Files and options are configured in the Localization Match dialog."));
+	localization_box->Bind(wxEVT_CHECKBOX, &SubsEditBox::OnLocalizationToggle, this);
+	middle_right_sizer->Add(localization_box, wxSizerFlags().Expand());
+	middle_right_sizer->AddSpacer(5);
+
 	// Main sizer
 	wxSizer *main_sizer = new wxBoxSizer(wxVERTICAL);
 	main_sizer->Add(top_sizer, wxSizerFlags().Expand().Border(wxALL, 3));
@@ -338,6 +442,31 @@ SubsEditBox::SubsEditBox(wxWindow *parent, agi::Context *context)
 	edit_ctrl->SetInitialSize(secondary_editor->GetSize());
 
 	main_sizer->Add(secondary_editor, wxSizerFlags(1).Expand().Border(wxLEFT | wxRIGHT | wxBOTTOM, 3));
+
+	// Localization match panel: pick a matched localized text and replace the
+	// current line with it. Files and options are shared with the
+	// Localization Match dialog.
+	localization_sizer = new wxBoxSizer(wxHORIZONTAL);
+	localization_combo = new wxComboBox(this, -1, wxEmptyString, wxDefaultPosition,
+		wxDefaultSize, wxArrayString(), wxCB_READONLY);
+	localization_combo->SetToolTip(_("Matching localization results for the current line"));
+	localization_refresh_button = new wxButton(this, -1, _("Refresh"));
+	localization_replace_button = new wxButton(this, -1, _("Replace"));
+	localization_insert_button = new wxButton(this, -1, _("Insert"));
+	localization_status = new wxStaticText(this, -1, wxEmptyString);
+	localization_sizer->Add(localization_combo, wxSizerFlags(1).Expand().Border(wxRIGHT, 4));
+	localization_sizer->Add(localization_refresh_button, wxSizerFlags().Border(wxRIGHT, 4));
+	localization_sizer->Add(localization_replace_button, wxSizerFlags().Border(wxRIGHT, 4));
+	localization_sizer->Add(localization_insert_button, wxSizerFlags().Border(wxRIGHT, 4));
+	localization_sizer->Add(localization_status, wxSizerFlags().CenterVertical());
+	localization_refresh_button->Bind(wxEVT_BUTTON, &SubsEditBox::OnLocalizationRefresh, this);
+	localization_replace_button->Bind(wxEVT_BUTTON, &SubsEditBox::OnLocalizationReplace, this);
+	localization_insert_button->Bind(wxEVT_BUTTON, &SubsEditBox::OnLocalizationInsert, this);
+	localization_replace_button->Enable(false);
+	localization_insert_button->Enable(false);
+	main_sizer->Add(localization_sizer, wxSizerFlags().Expand().Border(wxLEFT | wxRIGHT | wxBOTTOM, 3));
+	main_sizer->Hide(localization_sizer);
+
 	main_sizer->Add(edit_ctrl, wxSizerFlags(1).Expand().Border(wxLEFT | wxRIGHT | wxBOTTOM, 3));
 	main_sizer->Hide(secondary_editor);
 
@@ -386,6 +515,12 @@ SubsEditBox::SubsEditBox(wxWindow *parent, agi::Context *context)
 		split_box->SetValue(true);
 		DoOnSplit(true);
 
+	}
+
+	bool show_localization = OPT_GET("Subtitle/Localization Match")->GetBool();
+	if (show_localization) {
+		localization_box->SetValue(true);
+		DoLocalizationToggle(true);
 	}
 }
 
@@ -1409,6 +1544,98 @@ void SubsEditBox::OnSplit(wxCommandEvent&) {
 	bool show_original = split_box->IsChecked();
 	DoOnSplit(show_original);
 	OPT_SET("Subtitle/Show Original")->SetBool(show_original);
+}
+
+void SubsEditBox::OnLocalizationToggle(wxCommandEvent&) {
+	bool show = localization_box->IsChecked();
+	DoLocalizationToggle(show);
+	OPT_SET("Subtitle/Localization Match")->SetBool(show);
+}
+
+void SubsEditBox::OnLocalizationRefresh(wxCommandEvent&) {
+	RefreshLocalizationMatches();
+}
+
+void SubsEditBox::DoLocalizationToggle(bool show) {
+	Freeze();
+	GetSizer()->Show(localization_sizer, show);
+	Fit();
+	SetMinSize(GetSize());
+	wxSizer* parent_sizer = GetParent()->GetSizer();
+	if (parent_sizer) parent_sizer->Layout();
+	Thaw();
+}
+
+void SubsEditBox::RefreshLocalizationMatches() {
+	if (!localization_box || !localization_box->IsChecked() || !c) return;
+
+	auto paths = GetLocalizationPaths();
+	std::string signature = OPT_GET("Tool/Localization/Files")->GetString();
+	if (signature != localization_files_signature_) {
+		localization_files_ = LoadLocalizationFiles(paths);
+		localization_files_signature_ = signature;
+	}
+
+	localization_results_.clear();
+	localization_combo->Clear();
+
+	AssDialogue *cur = c->selectionController->GetActiveLine();
+	if (cur) {
+		auto options = GetLocalizationOptions();
+		localization_results_ = localization::Match(cur->GetStrippedText(), localization_files_, options);
+		for (size_t i = 0; i < localization_results_.size(); ++i) {
+			auto const& r = localization_results_[i];
+			wxString label = wxString::Format("%d%%",
+				static_cast<int>(std::lround(r.score * 100.0)));
+			label += wxS("  ");
+			label += to_wx(r.replacement);
+			wxString source = to_wx(r.file);
+			if (!r.key.empty()) {
+				source += wxS(" [");
+				source += to_wx(r.key);
+				source += wxS("]");
+			}
+			if (!source.empty()) {
+				label += wxS("  (");
+				label += source;
+				label += wxS(")");
+			}
+			localization_combo->Append(label);
+		}
+		if (!localization_results_.empty())
+			localization_combo->SetSelection(0);
+	}
+
+	bool has_result = !localization_results_.empty();
+	localization_replace_button->Enable(has_result);
+	localization_insert_button->Enable(has_result);
+
+	if (paths.empty())
+		localization_status->SetLabel(_("No localization files configured"));
+	else
+		localization_status->SetLabel(fmt_tl("%d matches", localization_results_.size()));
+}
+
+void SubsEditBox::OnLocalizationReplace(wxCommandEvent&) {
+	int sel = localization_combo->GetSelection();
+	if (sel == wxNOT_FOUND || static_cast<size_t>(sel) >= localization_results_.size()) return;
+
+	AssDialogue *cur = c->selectionController->GetActiveLine();
+	if (!cur) return;
+
+	cur->Text = AssEscapeNewlines(localization_results_[static_cast<size_t>(sel)].replacement);
+	c->ass->Commit(_("replace line with localization result"), AssFile::COMMIT_DIAG_TEXT, -1, cur);
+}
+
+void SubsEditBox::OnLocalizationInsert(wxCommandEvent&) {
+	int sel = localization_combo->GetSelection();
+	if (sel == wxNOT_FOUND || static_cast<size_t>(sel) >= localization_results_.size()) return;
+
+	std::string replacement = localization_results_[static_cast<size_t>(sel)].replacement;
+	if (BetterViewEnabled())
+		InsertTextAtCaret(to_wx(replacement));
+	else
+		InsertTextAtCaret(to_wx(AssEscapeNewlines(replacement)));
 }
 
 struct BetterViewConversion {

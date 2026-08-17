@@ -40,6 +40,9 @@ struct BilingualRecord {
 /// The result of loading one localization file.
 struct LocalizationFile {
 	std::string name;
+	/// Dominant language of the file text (e.g. "中文", "English", "日本語"),
+	/// detected when the file is loaded. Empty when unknown.
+	std::string language;
 	std::vector<TextItem> items;
 	std::vector<BilingualRecord> pairs;
 	bool ok = true;
@@ -54,6 +57,14 @@ struct MatchOptions {
 	bool ignore_punctuation = true;
 	bool ignore_case = true;
 	double threshold = 0.7;
+	/// Split segments at sentence endings (。.!?…) before matching.
+	bool split_sentences = true;
+	/// Optional regular expression: every match becomes a segment boundary
+	/// and the matched text is removed. Empty disables regex splitting.
+	std::string split_regex;
+	/// Results whose file language matches this value are sorted first.
+	/// Empty disables the preference.
+	std::string preferred_language = "中文";
 };
 
 /// One candidate result for a subtitle line.

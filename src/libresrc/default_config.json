@@ -445,6 +445,7 @@
 		},
 		"Provider" : "libass",
 		"Show Original": false,
+		"Localization Match": false,
 		"Better View": true,
 		"Time Edit" : {
 			"Insert Mode" : true
@@ -524,6 +525,9 @@
 			"Ignore Case" : true,
 			"Ignore Punctuation" : true,
 			"Ignore Tags" : true,
+			"Language" : "中文",
+			"Split Sentences" : true,
+			"Split Regex" : "",
 			"Last" : {
 				"X" : -1,
 				"Y" : -1

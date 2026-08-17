@@ -27,10 +27,12 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <initializer_list>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace localization {
@@ -56,6 +58,77 @@ bool ContainsCjk(std::string const& s) {
 	for (unsigned char c : s)
 		if (c >= 0xE4 && c <= 0xE9) return true;
 	return false;
+}
+
+/// Guess the dominant language of a UTF-8 text by script frequency.
+/// Returns a stable display name ("中文", "English", ...) or an empty string
+/// when no supported script is found.
+std::string DetectLanguage(std::string const& text) {
+	size_t han = 0;
+	size_t kana = 0;
+	size_t hangul = 0;
+	size_t cyrillic = 0;
+	size_t latin = 0;
+
+	for (size_t i = 0; i < text.size();) {
+		unsigned char c = static_cast<unsigned char>(text[i]);
+		uint32_t cp = 0;
+		int len = 0;
+		if (c < 0x80) {
+			cp = c;
+			len = 1;
+		}
+		else if ((c >> 5) == 0x6) {
+			cp = c & 0x1F;
+			len = 2;
+		}
+		else if ((c >> 4) == 0xE) {
+			cp = c & 0x0F;
+			len = 3;
+		}
+		else if ((c >> 3) == 0x1E) {
+			cp = c & 0x07;
+			len = 4;
+		}
+		else {
+			++i;
+			continue;
+		}
+		if (i + static_cast<size_t>(len) > text.size()) break;
+		bool valid = true;
+		for (int k = 1; k < len; ++k) {
+			unsigned char cc = static_cast<unsigned char>(text[i + k]);
+			if ((cc & 0xC0) != 0x80) {
+				valid = false;
+				break;
+			}
+			cp = (cp << 6) | (cc & 0x3F);
+		}
+		i += static_cast<size_t>(len);
+		if (!valid) continue;
+
+		if ((cp >= 0x4E00 && cp <= 0x9FFF) || (cp >= 0x3400 && cp <= 0x4DBF))
+			++han;
+		else if ((cp >= 0x3040 && cp <= 0x30FF) ||
+			(cp >= 0x31F0 && cp <= 0x31FF) ||
+			(cp >= 0xFF66 && cp <= 0xFF9F))
+			++kana;
+		else if ((cp >= 0xAC00 && cp <= 0xD7AF) ||
+			(cp >= 0x1100 && cp <= 0x11FF))
+			++hangul;
+		else if (cp >= 0x0400 && cp <= 0x04FF)
+			++cyrillic;
+		else if ((cp >= 'A' && cp <= 'Z') || (cp >= 'a' && cp <= 'z') ||
+			(cp >= 0x00C0 && cp <= 0x024F))
+			++latin;
+	}
+
+	if (kana > 0) return "日本語";
+	if (han > 0) return "中文";
+	if (hangul > 0) return "한국어";
+	if (cyrillic > 0) return "Русский";
+	if (latin > 0) return "English";
+	return {};
 }
 
 std::string StripQuotes(std::string s) {
@@ -455,6 +528,22 @@ LocalizationFile LoadContent(std::string const& content,
 		f.pairs.clear();
 		return f;
 	}
+
+	// Classify bilingual files by their localized (translation) side and
+	// plain entries by their own text, so an English source column does not
+	// pull a Chinese/Japanese file toward "English".
+	std::unordered_set<std::string> pair_texts;
+	for (auto const& pair : f.pairs) {
+		pair_texts.insert(pair.source);
+		pair_texts.insert(pair.translation);
+	}
+	std::string sample;
+	for (auto const& item : f.items)
+		if (pair_texts.find(item.text) == pair_texts.end())
+			sample += item.text + "\n";
+	for (auto const& pair : f.pairs)
+		sample += pair.translation + "\n";
+	f.language = DetectLanguage(sample);
 
 	if (f.items.empty() && f.pairs.empty())
 		f.error = "No text entries were found in this file.";

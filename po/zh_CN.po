@@ -6946,6 +6946,165 @@ msgstr ""
 msgid "Update Checker:"
 msgstr "自动更新："
 
+#: ../src/dialog_localization.cpp:514 ../src/subs_edit_box.cpp:418
+#: ../src/command/tool.cpp:111
+msgid "Localization Match"
+msgstr "本地化匹配"
+
+#: ../src/command/tool.cpp:110
+msgid "&Localization Match..."
+msgstr "本地化匹配(&L)..."
+
+#: ../src/command/tool.cpp:112
+msgid ""
+"Match the current line against game localization files and replace its text "
+"with the localized result"
+msgstr "将当前行与游戏本地化文件进行匹配，并用本地化结果替换其文本"
+
+#: ../src/dialog_localization.cpp:169
+msgid "Match options"
+msgstr "匹配选项"
+
+#: ../src/dialog_localization.cpp:171
+msgid "Fuzzy match"
+msgstr "模糊匹配"
+
+#: ../src/dialog_localization.cpp:172
+msgid "Ignore text tags"
+msgstr "忽略文本标签"
+
+#: ../src/dialog_localization.cpp:174
+msgid "Ignore case"
+msgstr "忽略大小写"
+
+#: ../src/dialog_localization.cpp:180
+msgid "Minimum similarity:"
+msgstr "最低相似度："
+
+#: ../src/dialog_localization.cpp:186
+msgid "Preferred language:"
+msgstr "优先语言："
+
+#: ../src/dialog_localization.cpp:201
+msgid "Split by sentences"
+msgstr "按句号分句"
+
+#: ../src/dialog_localization.cpp:202
+msgid ""
+"Split segments at sentence endings (。.!?…). Turn this off to keep whole "
+"entries as single segments."
+msgstr "在句子结尾（。.!?…）处断句。关闭后整条条目将作为一个完整段落。"
+
+#: ../src/dialog_localization.cpp:204
+msgid ""
+"Split segments wherever this regular expression matches; the matched text is "
+"removed. For example, use \\{[^}]*\\} to break at text tags such as {*1} or "
+"{TA7}. Invalid patterns are ignored."
+msgstr ""
+"在正则表达式匹配到的位置断句，匹配到的文本会被移除。例如 \\{[^}]*\\} 可把 "
+"{*1}、{TA7} 等文本标签作为断句点。无效的正则表达式会被忽略。"
+
+#: ../src/dialog_localization.cpp:206
+msgid "Split regex:"
+msgstr "断句正则："
+
+#: ../src/dialog_localization.cpp:212
+msgid "Localization files"
+msgstr "本地化文件"
+
+#: ../src/dialog_localization.cpp:215
+msgid "Add Files..."
+msgstr "添加文件..."
+
+#: ../src/dialog_localization.cpp:225
+msgid "Results"
+msgstr "结果"
+
+#: ../src/dialog_localization.cpp:229
+msgid "Source"
+msgstr "来源"
+
+#: ../src/dialog_localization.cpp:230
+msgid "Matched text"
+msgstr "匹配文本"
+
+#: ../src/dialog_localization.cpp:231
+msgid "Localized text"
+msgstr "本地化文本"
+
+#: ../src/dialog_localization.cpp:232
+msgid "Origin"
+msgstr "出处"
+
+#: ../src/dialog_localization.cpp:237
+msgid "Replace Line"
+msgstr "替换该行"
+
+#: ../src/dialog_localization.cpp:238
+msgid "Insert at Caret"
+msgstr "插入到光标处"
+
+#: ../src/dialog_localization.cpp:239
+msgid "Copy"
+msgstr "复制"
+
+#: ../src/dialog_localization.cpp:380
+msgid "No active subtitle line."
+msgstr "没有活动的字幕行。"
+
+#: ../src/dialog_localization.cpp:358
+msgid "  [failed to load]"
+msgstr "  [加载失败]"
+
+#: ../src/dialog_localization.cpp:423
+msgid "%d matches from %d files (%d entries)"
+msgstr "%d 个匹配（来自 %d 个文件，共 %d 个条目）"
+
+#: ../src/dialog_localization.cpp:426
+msgid ", %d file(s) failed to load"
+msgstr "，%d 个文件加载失败"
+
+#: ../src/dialog_localization.cpp:431
+msgid "Choose localization files"
+msgstr "选择本地化文件"
+
+#: ../src/dialog_localization.cpp:477
+msgid "Select a result first."
+msgstr "请先选择一条结果。"
+
+#: ../src/dialog_localization.cpp:484
+msgid "No active subtitle line is selected."
+msgstr "未选中活动的字幕行。"
+
+#: ../src/dialog_localization.cpp:490
+msgid "replace line with localization result"
+msgstr "用本地化结果替换字幕行"
+
+#: ../src/subs_edit_box.cpp:419
+msgid ""
+"Show matching localization results for the current line and replace the line "
+"text directly. Files and options are configured in the Localization Match "
+"dialog."
+msgstr ""
+"显示当前字幕行的本地化匹配结果，可直接选择结果替换行文本。文件和选项请在"
+"“本地化匹配”对话框中配置。"
+
+#: ../src/subs_edit_box.cpp:450
+msgid "Matching localization results for the current line"
+msgstr "当前字幕行的本地化匹配结果"
+
+#: ../src/subs_edit_box.cpp:451
+msgid "Refresh"
+msgstr "刷新"
+
+#: ../src/subs_edit_box.cpp:1612
+msgid "No localization files configured"
+msgstr "未配置本地化文件"
+
+#: ../src/subs_edit_box.cpp:1614
+msgid "%d matches"
+msgstr "%d 个匹配"
+
 #~ msgid "    Subtitle format handler: %s"
 #~ msgstr "    字幕格式处理器： %s"
 

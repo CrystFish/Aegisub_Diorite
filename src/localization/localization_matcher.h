@@ -26,4 +26,14 @@ std::string Normalize(std::string text, MatchOptions const& options);
 /// (1 - normalized Levenshtein distance).
 double Similarity(std::string const& a, std::string const& b);
 
+/// Split text into segments at line breaks, game-style {*N} markers, optional
+/// regex matches, and (when enabled) sentence boundaries. Returns at least one
+/// segment; a single segment is returned when no reliable boundaries are
+/// found.
+/// @param split_sentences Also split at sentence endings (。.!?…)
+/// @param split_regex     Optional regex; every match becomes a boundary and
+///                        the matched text is removed from the segments
+std::vector<std::string> SplitSegments(std::string const& text,
+	bool split_sentences = true, std::string const& split_regex = {});
+
 } // namespace localization

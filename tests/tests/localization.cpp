@@ -65,6 +65,69 @@ TEST(lagi_localization, Similarity) {
 	EXPECT_EQ(Similarity("", "hello"), 0.0);
 }
 
+TEST(lagi_localization, SplitSegmentsMarkers) {
+	auto segments = SplitSegments("{*1}Hello. {*2}World");
+	ASSERT_EQ(segments.size(), 2u);
+	EXPECT_EQ(segments[0], "Hello.");
+	EXPECT_EQ(segments[1], "World");
+}
+
+TEST(lagi_localization, SplitSegmentsRangeMarkers) {
+	auto segments = SplitSegments(
+		"{*1}Hello. {*2}World. {*4-5}Joined range marker text. {*6,7}Comma range.");
+	ASSERT_EQ(segments.size(), 4u);
+	EXPECT_EQ(segments[0], "Hello.");
+	EXPECT_EQ(segments[1], "World.");
+	EXPECT_EQ(segments[2], "Joined range marker text.");
+	EXPECT_EQ(segments[3], "Comma range.");
+}
+
+TEST(lagi_localization, SplitSegmentsSentences) {
+	auto segments = SplitSegments("Hello. World! どうして？ なんで。");
+	ASSERT_EQ(segments.size(), 4u);
+	EXPECT_EQ(segments[0], "Hello.");
+	EXPECT_EQ(segments[1], "World!");
+	EXPECT_EQ(segments[2], "どうして？");
+	EXPECT_EQ(segments[3], "なんで。");
+}
+
+TEST(lagi_localization, SplitSegmentsNoBoundaries) {
+	auto segments = SplitSegments("Just one sentence");
+	ASSERT_EQ(segments.size(), 1u);
+	EXPECT_EQ(segments[0], "Just one sentence");
+}
+
+TEST(lagi_localization, SplitSegmentsSentenceToggle) {
+	EXPECT_EQ(SplitSegments("Hello. World!", true).size(), 2u);
+	EXPECT_EQ(SplitSegments("Hello. World!", false).size(), 1u);
+	EXPECT_EQ(SplitSegments("こんにちは。さようなら。", true).size(), 2u);
+	EXPECT_EQ(SplitSegments("こんにちは。さようなら。", false).size(), 1u);
+}
+
+TEST(lagi_localization, SplitSegmentsLeadingEllipsis) {
+	// A leading ellipsis must stay attached to the sentence instead of
+	// becoming a spurious one-character segment.
+	auto segments = SplitSegments("… this is the very latest model, the LT600.");
+	ASSERT_EQ(segments.size(), 1u);
+	EXPECT_EQ(segments[0], "… this is the very latest model, the LT600.");
+}
+
+TEST(lagi_localization, SplitSegmentsRegexTags) {
+	auto segments = SplitSegments("{TA7}Hello world. {*1}Second line. Third line.",
+		true, "\\{[^}]*\\}");
+	ASSERT_EQ(segments.size(), 3u);
+	EXPECT_EQ(segments[0], "Hello world.");
+	EXPECT_EQ(segments[1], "Second line.");
+	EXPECT_EQ(segments[2], "Third line.");
+
+	// Sentence splitting off: only regex boundaries apply.
+	segments = SplitSegments("{TA7}Hello world. {*1}Second line. Third line.",
+		false, "\\{[^}]*\\}");
+	ASSERT_EQ(segments.size(), 2u);
+	EXPECT_EQ(segments[0], "Hello world.");
+	EXPECT_EQ(segments[1], "Second line. Third line.");
+}
+
 TEST(lagi_localization, MatchExactAndCrossFileKeyPair) {
 	std::vector<LocalizationFile> files(2);
 	files[0].name = "en.json";
@@ -82,6 +145,95 @@ TEST(lagi_localization, MatchExactAndCrossFileKeyPair) {
 	EXPECT_EQ(results[0].file, "zh.json");
 	EXPECT_EQ(results[0].replacement, "你好");
 	EXPECT_EQ(results[0].origin, "key \"greeting\" in zh.json");
+}
+
+TEST(lagi_localization, MatchSegmentAcrossFiles) {
+	// A subtitle that is one sentence of a multi-sentence localization entry
+	// should match that sentence and offer the aligned sentence of the
+	// same-key entry in the other file.
+	std::vector<LocalizationFile> files(2);
+	files[0].name = "en.json";
+	files[0].ok = true;
+	files[0].items.push_back({
+		"X0101X_TERRACE_PARTI_PC_X01CONNOR_EMMAANDYOU01",
+		"{*1}I know you and Emma were very close. {*2}You think she betrayed you - but she’s done nothing wrong.",
+		"en.json"
+	});
+	files[1].name = "zh.json";
+	files[1].ok = true;
+	files[1].items.push_back({
+		"X0101X_TERRACE_PARTI_PC_X01CONNOR_EMMAANDYOU01",
+		"{*1}我知道你跟艾玛感情很好。{*2}你觉得她背叛了你……但她并没有做错什么。",
+		"zh.json"
+	});
+
+	auto results = Match("I know you and Emma were very close.",
+		files, DefaultOptions());
+	ASSERT_FALSE(results.empty());
+
+	bool found = false;
+	for (auto const& r : results) {
+		if (r.replacement == "我知道你跟艾玛感情很好。") {
+			found = true;
+			EXPECT_TRUE(r.exact);
+			EXPECT_NE(r.origin.find("segment"), std::string::npos);
+			EXPECT_EQ(r.file, "zh.json");
+		}
+	}
+	EXPECT_TRUE(found);
+}
+
+TEST(lagi_localization, MatchPartialSegmentWithRangeMarker) {
+	// A subtitle truncated mid-sentence must still match the aligned segment
+	// when the entry uses range markers such as {*4-5}.
+	std::vector<LocalizationFile> files(2);
+	files[0].name = "en.json";
+	files[0].ok = true;
+	files[0].items.push_back({
+		"X0101K_INTRO_LIME_PC_X01KSELLER01_MODELS01",
+		"{*1}… this is the very latest model, the LT600. {*2}This is the top of the range household assistant. {*3}It cooks 10,000 different dishes, speaks 200 languages and dialects {*4-5}and handles the kids' homework from elementary school up to university level. {*6}At the moment we're doing a special promotion on this entire range at $7999, with a 48-months interest free credit. {*7}And it comes with a two-year warranty for parts and labor. {*8}An excellent choice, sir. {*9}If you'll just follow me, we'll process the order.",
+		"en.json"
+	});
+	files[1].name = "zh.json";
+	files[1].ok = true;
+	files[1].items.push_back({
+		"X0101K_INTRO_LIME_PC_X01KSELLER01_MODELS01",
+		"{*1}……这是最新的型号，LT600。{*2}属于家务助理最顶级的旗舰系列。{*3}可以煮一万道菜色，说两百种语言和方言。{*4-5}有能力协助从小学到大学阶段的孩子完成学校作业。{*6}现在全系列正在做特别促销，只要$7999美金，可以使用48个月无息分期付款。{*7}附有两年零件更换与保修服务。{*8}您眼光真好，先生。{*9}请跟我来，我们将立即处理您的订单。",
+		"zh.json"
+	});
+
+	auto results = Match("And handles the kids' homework from elementary school up to",
+		files, DefaultOptions());
+	ASSERT_FALSE(results.empty());
+
+	bool found = false;
+	for (auto const& r : results) {
+		if (r.replacement == "有能力协助从小学到大学阶段的孩子完成学校作业。") {
+			found = true;
+			EXPECT_EQ(r.file, "zh.json");
+			EXPECT_NE(r.origin.find("segment"), std::string::npos);
+		}
+	}
+	EXPECT_TRUE(found);
+}
+
+TEST(lagi_localization, MatchSegmentInline) {
+	std::vector<LocalizationFile> files(1);
+	files[0].name = "bilingual.json";
+	files[0].ok = true;
+	files[0].pairs.push_back({"",
+		"{*1}Hello. {*2}Bye.", "{*1}你好。{*2}再见。", "bilingual.json"});
+
+	auto results = Match("Hello", files, DefaultOptions());
+	ASSERT_FALSE(results.empty());
+	bool found = false;
+	for (auto const& r : results) {
+		if (r.replacement == "你好。") {
+			found = true;
+			EXPECT_NE(r.origin.find("segment"), std::string::npos);
+		}
+	}
+	EXPECT_TRUE(found);
 }
 
 TEST(lagi_localization, MatchFuzzy) {
@@ -229,6 +381,61 @@ TEST(lagi_localization, LoadPlainTextList) {
 	ASSERT_EQ(file.items.size(), 2u);
 	EXPECT_TRUE(file.items[0].key.empty());
 	EXPECT_EQ(file.items[0].text, "First line");
+}
+
+TEST(lagi_localization, LoadDetectsLanguage) {
+	auto zh = LoadContent("{\"k\":\"你好世界\"}", "zh.json", "json");
+	ASSERT_TRUE(zh.ok);
+	EXPECT_EQ(zh.language, "中文");
+
+	auto en = LoadContent("{\"k\":\"Hello world\"}", "en.json", "json");
+	ASSERT_TRUE(en.ok);
+	EXPECT_EQ(en.language, "English");
+
+	auto ja = LoadContent("{\"k\":\"こんにちは世界\"}", "ja.json", "json");
+	ASSERT_TRUE(ja.ok);
+	EXPECT_EQ(ja.language, "日本語");
+
+	auto ko = LoadContent("{\"k\":\"안녕하세요\"}", "ko.json", "json");
+	ASSERT_TRUE(ko.ok);
+	EXPECT_EQ(ko.language, "한국어");
+
+	// Bilingual records are classified by their translation side, so a long
+	// English source column must not dominate the detection.
+	auto bilingual = LoadContent(
+		"{\"k\":{\"source\":\"This is a fairly long English sentence that would "
+		"dominate a naive character count\",\"translation\":\"这是一条中文译文\"}}",
+		"pairs.json", "json");
+	ASSERT_TRUE(bilingual.ok);
+	EXPECT_EQ(bilingual.language, "中文");
+}
+
+TEST(lagi_localization, MatchPrefersPreferredLanguage) {
+	std::vector<LocalizationFile> files(2);
+	files[0].name = "en.json";
+	files[0].ok = true;
+	files[0].language = "English";
+	files[0].pairs.push_back({"", "Hello", "Bonjour", "en.json"});
+	files[1].name = "zh.json";
+	files[1].ok = true;
+	files[1].language = "中文";
+	files[1].pairs.push_back({"", "Hello", "你好", "zh.json"});
+
+	MatchOptions options = DefaultOptions();
+	options.preferred_language = "中文";
+	auto results = Match("Hello", files, options);
+	ASSERT_EQ(results.size(), 2u);
+	EXPECT_EQ(results[0].file, "zh.json");
+
+	options.preferred_language = "English";
+	results = Match("Hello", files, options);
+	ASSERT_EQ(results.size(), 2u);
+	EXPECT_EQ(results[0].file, "en.json");
+
+	options.preferred_language = "日本語";
+	results = Match("Hello", files, options);
+	ASSERT_EQ(results.size(), 2u);
+	EXPECT_EQ(results[0].file, "en.json");
 }
 
 TEST(lagi_localization, LoadBinaryRejected) {

@@ -34,6 +34,8 @@
 #include <boost/flyweight/flyweight_fwd.hpp>
 #include <vector>
 
+#include "localization/localization_types.h"
+
 #include <wx/bmpbuttn.h>
 #include <wx/combobox.h>
 #include <wx/panel.h>
@@ -56,6 +58,7 @@ class wxSizer;
 class wxSpinCtrl;
 class wxStyledTextCtrl;
 class wxStyledTextEvent;
+class wxStaticText;
 class wxTextCtrl;
 struct AssDialogueBase;
 
@@ -111,6 +114,13 @@ class SubsEditBox final : public wxPanel {
 	wxTextCtrl *char_count;
 	wxCheckBox *split_box;
 	wxCheckBox *better_view_box;
+	wxCheckBox *localization_box;
+	wxComboBox *localization_combo;
+	wxButton *localization_refresh_button;
+	wxButton *localization_replace_button;
+	wxButton *localization_insert_button;
+	wxStaticText *localization_status;
+	wxSizer *localization_sizer;
 	wxButton *join_next_button;
 	wxButton *join_last_button;
 	wxButton *bracket_button_ = nullptr;
@@ -142,6 +152,16 @@ class SubsEditBox final : public wxPanel {
 	bool better_view_enabled_ = true;
 	std::vector<int> display_to_raw_;
 	std::string display_to_raw_raw_text_;
+
+	// [localization] BEGIN
+	/// Localization files loaded for the embedded match panel, refreshed when
+	/// the configured file list changes.
+	std::vector<localization::LocalizationFile> localization_files_;
+	/// Signature of the configured file list the loaded files were parsed from.
+	std::string localization_files_signature_;
+	/// Match results for the current line.
+	std::vector<localization::MatchResult> localization_results_;
+	// [localization] END
 
 	void RebuildDisplayMapping(std::string const& raw_utf8);
 	std::string BuildDisplayTextWithMapping(std::string const& raw_utf8);
@@ -204,7 +224,13 @@ class SubsEditBox final : public wxPanel {
 	void OnSize(wxSizeEvent &event);
 	void OnSplit(wxCommandEvent&);
 	void OnBetterView(wxCommandEvent&);
+	void OnLocalizationToggle(wxCommandEvent&);
+	void OnLocalizationRefresh(wxCommandEvent&);
+	void OnLocalizationReplace(wxCommandEvent&);
+	void OnLocalizationInsert(wxCommandEvent&);
 	void DoOnSplit(bool show_original);
+	void DoLocalizationToggle(bool show);
+	void RefreshLocalizationMatches();
 	void UpdateJoinButtons();
 	void UpdateSecondaryEditor();
 	wxString MakeDisplayText(wxString const& raw) const;
