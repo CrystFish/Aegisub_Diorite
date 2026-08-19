@@ -517,6 +517,20 @@
 				"Include Blank" : false
 			}
 		},
+		"HardSub" : {
+			"Confirm Frames" : 2,
+			"Confirm With OCR" : true,
+			"Last" : {
+				"X" : -1,
+				"Y" : -1
+			},
+			"Maximized" : false,
+			"Max Frames" : 0,
+			"Min Duration Frames" : 0,
+			"Strict OCR Check" : true,
+			"Stride" : 32,
+			"Threshold" : 40
+		},
 		"Kanji Timer" : {
 			"Interpolation" : true
 		},

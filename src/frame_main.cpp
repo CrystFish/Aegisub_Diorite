@@ -380,7 +380,7 @@ void FrameMain::UpdateTitle() {
 	newTitle << context->subsController->Filename().filename().wstring();
 
 #ifndef __WXMAC__
-	newTitle << " - Aegisub " << GetAegisubLongVersionString();
+	newTitle << " - Aegisub Diorite " << GetAegisubLongVersionString();
 #endif
 
 #if defined(__WXMAC__)

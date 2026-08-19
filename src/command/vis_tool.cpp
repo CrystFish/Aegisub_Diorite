@@ -17,6 +17,7 @@
 #include "command.h"
 
 #include "../dialog_manager.h"
+#include "../dialog_hardsub_scan.h"
 #include "../dialog_motion_track.h"
 #include "../include/aegisub/context.h"
 #include "../libresrc/libresrc.h"
@@ -187,6 +188,24 @@ namespace {
 				return;
 			}
 			c->dialog->Show<DialogMotionTrack>(c);
+		}
+	};
+
+	struct visual_hardsub_scan final : public Command {
+		CMD_NAME("video/tool/hardsub_scan")
+		CMD_ICON(button_motion_track)
+		STR_MENU("Hard Subtitle Scan")
+		STR_DISP("Hard Subtitle Scan")
+		STR_HELP("Select a subtitle region, recognize its text and detect precise start/end frames")
+		CMD_TYPE(COMMAND_VALIDATE)
+
+		bool Validate(const agi::Context *c) override {
+			return !!c->project->VideoProvider();
+		}
+
+		void operator()(agi::Context *c) override {
+			c->videoController->Stop();
+			c->dialog->Show<DialogHardSubScan>(c);
 		}
 	};
 
@@ -369,6 +388,7 @@ namespace cmd {
 		reg(agi::make_unique<visual_mode_clip>());
 		reg(agi::make_unique<visual_mode_vector_clip>());
 		reg(agi::make_unique<visual_motion_track>());
+		reg(agi::make_unique<visual_hardsub_scan>());
 
 		reg(agi::make_unique<visual_mode_perspective_plane>());
 		reg(agi::make_unique<visual_mode_perspective_lock_inner>());

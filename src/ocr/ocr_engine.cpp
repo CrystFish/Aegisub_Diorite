@@ -596,8 +596,9 @@ OCRResult ParsePaddleOCRJson(std::string const& json_text, OCROptions const& opt
 					ParsePolygon(item, line);
 				}
 
-				if (!line.box.empty())
-					result.lines.push_back(std::move(line));
+				// Keep the line even when the runtime omits the box field;
+				// the recognized text is what the caller needs.
+				result.lines.push_back(std::move(line));
 			}
 
 			result.text = NormalizeText(result.lines, options.keep_line_breaks);

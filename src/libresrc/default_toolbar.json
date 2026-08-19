@@ -80,6 +80,7 @@
         "video/tool/vector_clip",
         "",
         "help/video",
-        "video/tool/motion_track"
+        "video/tool/motion_track",
+        "video/tool/hardsub_scan"
     ]
 }

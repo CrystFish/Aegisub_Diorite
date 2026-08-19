@@ -44,7 +44,9 @@ subprojects/luajit
 subprojects/nasm-*
 subprojects/packagecache
 subprojects/proxy-libintl*
+subprojects/soundtouch/
 subprojects/wxWidgets
+subprojects/wxWidgets-*
 subprojects/zlib-*
 subprojects/dirent-*
 subprojects/hunspell-*
