@@ -56,6 +56,7 @@ Project::Project(agi::Context *c) : context(c) {
 	OPT_SUB("Provider/Audio/FFmpegSource/Downmix", &Project::ReloadAudio, this);
 	OPT_SUB("Provider/Avisynth/Memory Max", &Project::ReloadVideo, this);
 	OPT_SUB("Provider/Video/FFmpegSource/Decoding Threads", &Project::ReloadVideo, this);
+	OPT_SUB("Provider/Video/FFmpegSource/Hardware Decoding", &Project::ReloadVideo, this);
 	OPT_SUB("Provider/Video/FFmpegSource/Unsafe Seeking", &Project::ReloadVideo, this);
 	OPT_SUB("Subtitle/Provider", &Project::ReloadVideo, this);
 	OPT_SUB("Video/Provider", &Project::ReloadVideo, this);

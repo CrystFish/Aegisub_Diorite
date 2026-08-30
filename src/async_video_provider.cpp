@@ -174,6 +174,7 @@ AsyncVideoProvider::AsyncVideoProvider(agi::fs::path const& video_filename, std:
 : worker(agi::dispatch::Create())
 , subs_provider(get_subs_provider(parent, br))
 , source_provider(VideoProviderFactory::GetProvider(video_filename, colormatrix, br))
+, filename(video_filename)
 , parent(parent)
 {
 }

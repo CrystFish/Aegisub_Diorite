@@ -24,6 +24,16 @@
 
 namespace ocr {
 
+/// Pipeline stage switches for the persistent engine. PaddleOCR-json reads
+/// these from the command line at startup; they cannot be toggled per request,
+/// so a process started for detection-only boundary checks must be started
+/// with recognition disabled.
+struct OCRProcessConfig {
+	bool det = true;
+	bool rec = true;
+	bool cls = true;
+};
+
 /// A persistent PaddleOCR-json child process in anonymous pipe mode.
 ///
 /// The engine is started once without an image argument, then each request is
@@ -52,7 +62,8 @@ public:
 	/// Launch the pipe-mode engine. Returns false and fills diagnostic on
 	/// failure or when the platform does not support the persistent process.
 	bool Start(agi::fs::path const& executable, agi::fs::path const& models_dir,
-	           agi::fs::path const& config_path, std::string& diagnostic);
+	           agi::fs::path const& config_path, std::string& diagnostic,
+	           OCRProcessConfig config = OCRProcessConfig{});
 
 	/// Locate the bundled OCR runtime the one-shot engine would use. Returns
 	/// false and fills diagnostic when the runtime is not installed or is

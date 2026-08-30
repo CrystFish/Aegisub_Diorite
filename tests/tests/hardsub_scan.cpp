@@ -2,6 +2,8 @@
 
 #include "hardsub_scan.h"
 
+#include <algorithm>
+#include <functional>
 #include <memory>
 
 namespace {
@@ -39,6 +41,35 @@ VideoFrame MakeTextFrame(int width, int height, unsigned char bg, unsigned char 
 	return frame;
 }
 
+/// Build an 8-bit planar YUV 4:2:0 frame. `y_at`/`uv_at` set the luma and
+/// (signed) chroma offsets from 128 for each 2x2 block.
+VideoFrame MakeYuvFrame(int width, int height,
+                        std::function<unsigned char(int, int)> y_at,
+                        std::function<int(int, int)> u_at,
+                        std::function<int(int, int)> v_at) {
+	VideoFrame frame;
+	frame.width = width;
+	frame.height = height;
+	frame.pitch = width;
+	frame.flipped = false;
+	frame.pix_fmt = 1; // yuv420p
+	frame.data.assign(width * height + (width / 2) * (height / 2) * 2, 0);
+	for (int y = 0; y < height; ++y)
+		for (int x = 0; x < width; ++x)
+			frame.data[size_t(y) * width + x] = y_at(x, y);
+	size_t u_base = size_t(width) * height;
+	size_t v_base = u_base + size_t(width / 2) * (height / 2);
+	for (int by = 0; by < height / 2; ++by) {
+		for (int bx = 0; bx < width / 2; ++bx) {
+			frame.data[u_base + size_t(by) * (width / 2) + bx]
+				= static_cast<unsigned char>(128 + u_at(bx, by));
+			frame.data[v_base + size_t(by) * (width / 2) + bx]
+				= static_cast<unsigned char>(128 + v_at(bx, by));
+		}
+	}
+	return frame;
+}
+
 } // namespace
 
 TEST(hardsub_scan, crop_region_reads_bgra) {
@@ -60,6 +91,50 @@ TEST(hardsub_scan, crop_region_clamps_to_frame) {
 	ASSERT_TRUE(crop.Valid());
 	EXPECT_EQ(crop.width, 4);
 	EXPECT_EQ(crop.height, 2);
+}
+
+TEST(hardsub_scan, crop_region_yuv420p) {
+	// White (Y=235, Cb=Cr=128) left half, black (Y=16) right half.
+	auto frame = MakeYuvFrame(4, 2,
+		[](int x, int) { return x < 2 ? 235 : 16; },
+		[](int, int) { return 0; },
+		[](int, int) { return 0; });
+
+	auto left = CropRegion(frame, 0, 0, 2, 1);
+	auto right = CropRegion(frame, 2, 0, 2, 1);
+	ASSERT_TRUE(left.Valid());
+	ASSERT_TRUE(right.Valid());
+	// BT.709 limited range: white 235 -> (235, 235, 235), black 16 -> (16,16,16)
+	EXPECT_NEAR(left.rgb[0], 235, 2);
+	EXPECT_NEAR(left.rgb[1], 235, 2);
+	EXPECT_NEAR(left.rgb[2], 235, 2);
+	EXPECT_NEAR(right.rgb[0], 16, 2);
+	EXPECT_NEAR(right.rgb[1], 16, 2);
+	EXPECT_NEAR(right.rgb[2], 16, 2);
+}
+
+TEST(hardsub_scan, crop_region_nv12) {
+	VideoFrame frame = MakeYuvFrame(4, 2,
+		[](int x, int) { return x < 2 ? 235 : 16; },
+		[](int, int) { return 0; },
+		[](int, int) { return 0; });
+	// Convert the planar buffer to NV12 layout (interleaved UV).
+	frame.pix_fmt = 2;
+	size_t y_bytes = size_t(frame.width) * frame.height;
+	size_t chroma = size_t(frame.width / 2) * (frame.height / 2);
+	std::vector<unsigned char> nv12(y_bytes + chroma * 2);
+	std::copy(frame.data.begin(), frame.data.begin() + y_bytes, nv12.begin());
+	for (size_t i = 0; i < chroma; ++i) {
+		nv12[y_bytes + i * 2] = frame.data[y_bytes + i];          // U
+		nv12[y_bytes + i * 2 + 1] = frame.data[y_bytes + chroma + i]; // V
+	}
+	frame.data = std::move(nv12);
+
+	auto left = CropRegion(frame, 0, 0, 2, 1);
+	ASSERT_TRUE(left.Valid());
+	EXPECT_NEAR(left.rgb[0], 235, 2);
+	EXPECT_NEAR(left.rgb[1], 235, 2);
+	EXPECT_NEAR(left.rgb[2], 235, 2);
 }
 
 TEST(hardsub_scan, mean_abs_diff) {
@@ -268,7 +343,6 @@ TEST(hardsub_scan, adaptive_walk_finds_long_run_without_range) {
 	opts.max_frames = 0; // no explicit range: the walk must find the edges itself
 	opts.threshold = 0.5;
 	opts.confirm_frames = 2;
-	opts.stride = 15;
 
 	auto result = ScanBoundaries(CropRegion(frames[150], 0, 0, width, height), 0, 0, 150, 300, opts, loader);
 	ASSERT_TRUE(result.ok);
@@ -276,7 +350,7 @@ TEST(hardsub_scan, adaptive_walk_finds_long_run_without_range) {
 	EXPECT_EQ(result.end_frame, run_hi);
 }
 
-TEST(hardsub_scan, large_stride_still_finds_exact_boundaries) {
+TEST(hardsub_scan, long_run_finds_exact_boundaries) {
 	const int width = 8, height = 8;
 	const int run_lo = 10, run_hi = 830;
 	std::vector<VideoFrame> frames;
@@ -289,17 +363,14 @@ TEST(hardsub_scan, large_stride_still_finds_exact_boundaries) {
 	opts.max_frames = 0;
 	opts.threshold = 0.5;
 	opts.confirm_frames = 2;
-	opts.stride = 32;
 
-	// With stride 32 the coarse samples land on 20 and 820; the frame-by-frame
-	// refinement (plus the bound probe) must still pin the exact 10/830 edges.
 	auto result = ScanBoundaries(CropRegion(frames[500], 0, 0, width, height), 0, 0, 500, 900, opts, loader);
 	ASSERT_TRUE(result.ok);
 	EXPECT_EQ(result.start_frame, run_lo);
 	EXPECT_EQ(result.end_frame, run_hi);
 }
 
-TEST(hardsub_scan, stride_one_catches_mid_run_gap) {
+TEST(hardsub_scan, splits_run_at_interior_gap) {
 	const int width = 8, height = 8;
 	std::vector<VideoFrame> frames;
 	// Subtitle 10..19 and 22..40, with a 2-frame gap at 20..21 that splits the
@@ -315,15 +386,16 @@ TEST(hardsub_scan, stride_one_catches_mid_run_gap) {
 	opts.max_frames = 0;
 	opts.threshold = 0.5;
 	opts.confirm_frames = 2;
-	opts.stride = 1;
 
+	// The gap is wide enough to split the run; the base frame's run is the
+	// second subtitle.
 	auto result = ScanBoundaries(CropRegion(frames[30], 0, 0, width, height), 0, 0, 30, 50, opts, loader);
 	ASSERT_TRUE(result.ok);
 	EXPECT_EQ(result.start_frame, 22);
 	EXPECT_EQ(result.end_frame, 40);
 }
 
-TEST(hardsub_scan, stride_one_fills_single_frame_gap) {
+TEST(hardsub_scan, fills_single_frame_dip) {
 	const int width = 8, height = 8;
 	std::vector<VideoFrame> frames;
 	// Subtitle 10..40 with a 1-frame dip at 20: shorter than confirm, so it is
@@ -339,7 +411,6 @@ TEST(hardsub_scan, stride_one_fills_single_frame_gap) {
 	opts.max_frames = 0;
 	opts.threshold = 0.5;
 	opts.confirm_frames = 2;
-	opts.stride = 1;
 
 	auto result = ScanBoundaries(CropRegion(frames[30], 0, 0, width, height), 0, 0, 30, 50, opts, loader);
 	ASSERT_TRUE(result.ok);
@@ -347,10 +418,10 @@ TEST(hardsub_scan, stride_one_fills_single_frame_gap) {
 	EXPECT_EQ(result.end_frame, 40);
 }
 
-TEST(hardsub_scan, stride_sampling_finds_long_run) {
+TEST(hardsub_scan, finds_run_off_probe_grid) {
 	const int width = 8, height = 8;
 	std::vector<VideoFrame> frames;
-	// Subtitle visible on frames 10..60, base frame not on the stride grid.
+	// Subtitle visible on frames 10..60, base frame not near any probe step.
 	for (int i = 0; i < 80; ++i)
 		frames.push_back(i >= 10 && i <= 60 ? MakeTextFrame(width, height, 10, 200)
 		                                    : MakeFrame(width, height, 10, 10, 10));
@@ -360,7 +431,6 @@ TEST(hardsub_scan, stride_sampling_finds_long_run) {
 	opts.max_frames = 0;
 	opts.threshold = 0.5;
 	opts.confirm_frames = 0;
-	opts.stride = 15;
 
 	auto result = ScanBoundaries(CropRegion(frames[35], 0, 0, width, height), 0, 0, 35, 80, opts, loader);
 	ASSERT_TRUE(result.ok);
@@ -368,11 +438,11 @@ TEST(hardsub_scan, stride_sampling_finds_long_run) {
 	EXPECT_EQ(result.end_frame, 60);
 }
 
-TEST(hardsub_scan, stride_window_survives_noisy_boundary_sample) {
+TEST(hardsub_scan, survives_noisy_boundary_sample) {
 	const int width = 8, height = 8;
 	std::vector<VideoFrame> frames;
-	// Run 10..50, but frame 45 is a noisy absent frame; 45 also happens to be
-	// on the stride grid. The refinement window must extend past it.
+	// Run 10..50, but frame 45 is a noisy absent frame shorter than the
+	// confirm debounce; the run must stay contiguous.
 	for (int i = 0; i < 60; ++i)
 		frames.push_back(i >= 10 && i <= 50 && i != 45 ? MakeTextFrame(width, height, 10, 200)
 		                                               : MakeFrame(width, height, 10, 10, 10));
@@ -382,7 +452,6 @@ TEST(hardsub_scan, stride_window_survives_noisy_boundary_sample) {
 	opts.max_frames = 0;
 	opts.threshold = 0.5;
 	opts.confirm_frames = 2;
-	opts.stride = 15;
 
 	auto result = ScanBoundaries(CropRegion(frames[30], 0, 0, width, height), 0, 0, 30, 60, opts, loader);
 	ASSERT_TRUE(result.ok);
@@ -390,12 +459,35 @@ TEST(hardsub_scan, stride_window_survives_noisy_boundary_sample) {
 	EXPECT_EQ(result.end_frame, 50);
 }
 
-TEST(hardsub_scan, stride_limits_loader_calls) {
+TEST(hardsub_scan, long_run_above_dense_cap_still_exact) {
+	const int width = 8, height = 8;
+	const int run_lo = 100, run_hi = 1500;
+	std::vector<VideoFrame> frames;
+	for (int i = 0; i < 1700; ++i)
+		frames.push_back(i >= run_lo && i <= run_hi ? MakeTextFrame(width, height, 10, 200)
+		                                            : MakeFrame(width, height, 10, 10, 10));
+
+	auto loader = [&](int f) { return std::make_shared<VideoFrame>(frames[f]); };
+	ScanOptions opts;
+	opts.max_frames = 0;
+	opts.threshold = 0.5;
+	opts.confirm_frames = 2;
+
+	// The span is above the dense-pass cap, so the scan must refine each
+	// boundary with binary search and a small frame-by-frame window while
+	// still landing on the exact edges.
+	auto result = ScanBoundaries(CropRegion(frames[800], 0, 0, width, height), 0, 0, 800, 1700, opts, loader);
+	ASSERT_TRUE(result.ok);
+	EXPECT_EQ(result.start_frame, run_lo);
+	EXPECT_EQ(result.end_frame, run_hi);
+}
+
+TEST(hardsub_scan, sequential_pass_finds_exact_boundaries) {
 	const int width = 8, height = 8;
 	std::vector<VideoFrame> frames;
-	for (int i = 0; i < 200; ++i)
-		frames.push_back(i >= 60 && i <= 120 ? MakeTextFrame(width, height, 10, 200)
-		                                     : MakeFrame(width, height, 10, 10, 10));
+	for (int i = 0; i < 3200; ++i)
+		frames.push_back(i >= 10 && i <= 3000 ? MakeTextFrame(width, height, 10, 200)
+		                                      : MakeFrame(width, height, 10, 10, 10));
 
 	int calls = 0;
 	auto loader = [&](int f) {
@@ -405,14 +497,171 @@ TEST(hardsub_scan, stride_limits_loader_calls) {
 	ScanOptions opts;
 	opts.max_frames = 0;
 	opts.threshold = 0.5;
-	opts.confirm_frames = 0;
-	opts.stride = 15;
+	opts.confirm_frames = 2;
 
-	auto result = ScanBoundaries(CropRegion(frames[90], 0, 0, width, height), 0, 0, 90, 200, opts, loader);
+	auto result = ScanBoundaries(CropRegion(frames[1500], 0, 0, width, height), 0, 0, 1500, 3200, opts, loader);
 	ASSERT_TRUE(result.ok);
-	EXPECT_EQ(result.start_frame, 60);
-	EXPECT_EQ(result.end_frame, 120);
-	// Exponential probes plus narrow boundary refinements: roughly 30 frames
-	// per side. Far below the 200 frames of a full scan.
-	EXPECT_LE(calls, 80);
+	EXPECT_EQ(result.start_frame, 10);
+	EXPECT_EQ(result.end_frame, 3000);
+	// The scan decodes one contiguous ascending pass over the run (a design
+	// chosen because sequential decoding is cheap while random seeks are
+	// expensive on real codecs), so it never evaluates more than the video.
+	EXPECT_LE(calls, 3200);
+}
+
+TEST(hardsub_scan, far_from_video_edge_stays_bounded) {
+	const int width = 8, height = 8;
+	std::vector<VideoFrame> frames;
+	frames.reserve(30000);
+	for (int i = 0; i < 30000; ++i)
+		frames.push_back(i >= 700 && i <= 1000 ? MakeTextFrame(width, height, 10, 200)
+		                                       : MakeFrame(width, height, 10, 10, 10));
+
+	int calls = 0;
+	auto loader = [&](int f) {
+		++calls;
+		return std::make_shared<VideoFrame>(frames[f]);
+	};
+	ScanOptions opts;
+	opts.max_frames = 0;
+	opts.threshold = 0.5;
+	opts.confirm_frames = 2;
+
+	// The exponential backward probe overshoots the video start here; the
+	// scan must not respond by decoding the whole 0..1000 span. It narrows
+	// the transition with a binary search and evaluates only the boundary
+	// windows plus a sparse interior.
+	auto result = ScanBoundaries(CropRegion(frames[1000], 0, 0, width, height), 0, 0, 1000, 30000, opts, loader);
+	ASSERT_TRUE(result.ok);
+	EXPECT_EQ(result.start_frame, 700);
+	EXPECT_EQ(result.end_frame, 1000);
+	// The pass starts at the pre-roll before the run and stops shortly after
+	// its end; it must not decode the whole 0..1000 span nor scan to the end
+	// of the 30000-frame video.
+	EXPECT_LE(calls, 500);
+}
+
+TEST(hardsub_scan, sequential_pass_with_keyframes) {
+	const int width = 8, height = 8;
+	std::vector<VideoFrame> frames;
+	for (int i = 0; i < 3000; ++i)
+		frames.push_back(i >= 700 && i <= 1000 ? MakeTextFrame(width, height, 10, 200)
+		                                       : MakeFrame(width, height, 10, 10, 10));
+
+	int calls = 0;
+	auto loader = [&](int f) {
+		++calls;
+		return std::make_shared<VideoFrame>(frames[f]);
+	};
+	ScanOptions opts;
+	opts.max_frames = 0;
+	opts.threshold = 0.5;
+	opts.confirm_frames = 2;
+
+	// Keyframes every 60 frames; the pass must align its start to a keyframe
+	// and still find the exact edges.
+	std::vector<int> keyframes;
+	for (int f = 0; f < 3000; f += 60)
+		keyframes.push_back(f);
+
+	auto result = ScanBoundaries(CropRegion(frames[800], 0, 0, width, height), 0, 0, 800, 3000,
+	                             opts, loader, CancelFn(), ProgressFn(), keyframes);
+	ASSERT_TRUE(result.ok);
+	EXPECT_EQ(result.start_frame, 700);
+	EXPECT_EQ(result.end_frame, 1000);
+	EXPECT_LE(calls, 500);
+}
+
+TEST(hardsub_scan, boundary_ambiguous_detects_fades) {
+	ScanResult r;
+	r.ok = true;
+	r.start_frame = 100;
+	r.end_frame = 200;
+	for (int f = 96; f <= 204; ++f) {
+		r.frames.push_back(f);
+		r.diffs.push_back(f >= 100 && f <= 200 ? 0.9 : 0.05);
+	}
+
+	// Clean edges: nothing outside the run has text-like coverage.
+	EXPECT_FALSE(BoundaryAmbiguous(r, 0.3, true));
+	EXPECT_FALSE(BoundaryAmbiguous(r, 0.3, false));
+
+	// A fade just before the start makes the start boundary ambiguous.
+	r.diffs[100 - 96 - 1] = 0.35;
+	EXPECT_TRUE(BoundaryAmbiguous(r, 0.3, true));
+	EXPECT_FALSE(BoundaryAmbiguous(r, 0.3, false));
+
+	// A fade just after the end makes the end boundary ambiguous.
+	r.diffs[100 - 96 - 1] = 0.05;
+	r.diffs[200 - 96 + 1] = 0.35;
+	EXPECT_FALSE(BoundaryAmbiguous(r, 0.3, true));
+	EXPECT_TRUE(BoundaryAmbiguous(r, 0.3, false));
+
+	// Sparse evidence is treated as ambiguous so OCR is never skipped.
+	ScanResult sparse;
+	sparse.ok = true;
+	sparse.start_frame = sparse.end_frame = 5;
+	sparse.frames = {0, 5, 10};
+	sparse.diffs = {0.0, 1.0, 0.0};
+	EXPECT_TRUE(BoundaryAmbiguous(sparse, 0.3, true));
+}
+
+TEST(hardsub_scan, compute_presence_applies_hysteresis) {
+	// Coverage in the hysteresis zone keeps the previous state: a fading
+	// subtitle stays present while the coverage declines through the zone.
+	std::vector<double> coverage = {0.0, 0.10, 0.55, 0.35, 0.32, 0.60, 0.28, 0.05};
+	auto present = ComputePresence(coverage, {}, 0.5, 0.3);
+	ASSERT_EQ(present.size(), coverage.size());
+	EXPECT_FALSE(present[0]);
+	EXPECT_FALSE(present[1]);
+	EXPECT_TRUE(present[2]);   // above enter
+	EXPECT_TRUE(present[3]);   // 0.35 is in the zone: hold present
+	EXPECT_TRUE(present[4]);   // 0.32 is in the zone: hold present
+	EXPECT_TRUE(present[5]);   // back above enter
+	EXPECT_FALSE(present[6]);  // 0.28 < exit: flips absent
+	EXPECT_FALSE(present[7]);
+}
+
+TEST(hardsub_scan, compute_presence_ocr_vetoes_pixels) {
+	std::vector<double> coverage = {0.60, 0.60, 0.60};
+	std::vector<bool> ocr = {true, false, true};
+	auto present = ComputePresence(coverage, ocr, 0.5, 0.3);
+	ASSERT_EQ(present.size(), 3u);
+	EXPECT_TRUE(present[0]);
+	EXPECT_FALSE(present[1]); // pixel present but OCR missed: vetoed
+	EXPECT_TRUE(present[2]);
+}
+
+TEST(hardsub_scan, fill_short_dips_keeps_edges) {
+	std::vector<bool> present = {false, false, true, false, true, false, false};
+	auto filled = FillShortDips(present, 2);
+	ASSERT_EQ(filled.size(), present.size());
+	// The interior 1-frame dip at index 3 is filled; leading and trailing
+	// absent runs are preserved.
+	EXPECT_EQ(filled, (std::vector<bool>{false, false, true, true, true, false, false}));
+
+	auto unfilled = FillShortDips(present, 1);
+	EXPECT_EQ(unfilled, present);
+}
+
+TEST(hardsub_scan, run_start_and_end_follow_filled_series) {
+	std::vector<bool> present = {false, true, true, true, true, false, true};
+	EXPECT_EQ(RunStart(present, 2), 1);
+	EXPECT_EQ(RunEnd(present, 2), 4);
+	EXPECT_EQ(RunStart(present, 6), 6);
+	EXPECT_EQ(RunEnd(present, 6), 6);
+	EXPECT_EQ(RunStart(present, 5), 5); // anchor absent: returns anchor
+	EXPECT_EQ(RunEnd(present, 5), 5);
+}
+
+TEST(hardsub_scan, snap_boundary_uses_dual_evidence) {
+	std::vector<double> coverage = {0.2, 0.35, 0.45, 0.5, 0.5};
+	std::vector<bool> ocr = {false, true, false, true, true};
+
+	// Earliest frame with coverage >= exit and an OCR box: index 1.
+	EXPECT_EQ(SnapBoundaryFromEvidence(coverage, ocr, 0.3, true, 3), 1);
+	// Latest: index 4.
+	EXPECT_EQ(SnapBoundaryFromEvidence(coverage, ocr, 0.3, false, 2), 4);
+	// Fallback when nothing qualifies.
+	EXPECT_EQ(SnapBoundaryFromEvidence(coverage, {false, false, false, false, false}, 0.3, true, 2), 2);
 }

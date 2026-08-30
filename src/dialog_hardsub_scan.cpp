@@ -30,6 +30,7 @@
 #include "options.h"
 #include "persist_location.h"
 #include "project.h"
+#include "scan_video_decoder.h"
 #include "selection_controller.h"
 #include "utils.h"
 #include "video_controller.h"
@@ -43,9 +44,12 @@
 #include <boost/algorithm/string/replace.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cctype>
 #include <cstring>
+#include <future>
 #include <map>
+#include <mutex>
 #include <thread>
 #include <typeinfo>
 
@@ -63,10 +67,21 @@
 #include <wx/stattext.h>
 #include <wx/textctrl.h>
 
+/// Shared state for the background-pre-warmed detection-only OCR engine. The
+/// warmup task captures a copy of the shared_ptr, so it never touches the
+/// dialog after destruction and the dialog never joins it.
+/// Defined at global scope to match the forward declaration in the header.
+struct OcrWarmState {
+	std::mutex mutex;
+	std::shared_ptr<ocr::OCRProcess> process;
+	std::atomic<bool> ready{false};
+};
+
 namespace {
 
 wxDEFINE_EVENT(EVT_HARDSUB_RECOGNIZE_DONE, ValueEvent<HardSubRecognizeOutcome>);
 wxDEFINE_EVENT(EVT_HARDSUB_SCAN_PROGRESS, ValueEvent<HardSubScanProgress>);
+wxDEFINE_EVENT(EVT_HARDSUB_SCAN_PIXEL_DONE, ValueEvent<HardSubScanOutcome>);
 wxDEFINE_EVENT(EVT_HARDSUB_SCAN_DONE, ValueEvent<HardSubScanOutcome>);
 
 /// Detects text boxes in a PNG crop; returns the raw OCR result.
@@ -146,47 +161,123 @@ agi::fs::path SaveRegionPng(hardsub::FrameLoader const& loader,
 	return agi::fs::path(std::wstring(temp.wc_str()));
 }
 
-/// Refine a diff-detected boundary with the OCR detector. For the start
-/// boundary this looks for the earliest frame with detected text in the window;
-/// for the end boundary the latest one.
-int AdjustBoundaryWithOcr(FrameDetector const& detect, hardsub::FrameLoader const& loader,
-                          hardsub::RegionImage const& tpl, int region_x, int region_y,
-                          int boundary, int window, bool find_earliest,
-                          hardsub::CancelFn const& cancel) {
-	int best = boundary;
-	auto check_frame = [&](int frame) {
-		if (cancel && cancel())
-			return false;
-		wxString temp;
-		auto image_path = SaveRegionPng(loader, tpl, region_x, region_y, frame, 0, false, temp);
-		if (image_path.empty())
-			return false;
-		auto result = detect(image_path);
-		agi::fs::Remove(image_path);
-		return result.ok && !result.lines.empty();
-	};
+/// Snap a pixel-detected boundary with joint pixel+OCR evidence inside a small
+/// window. Each frame in the window gets its template coverage and a
+/// detection-only OCR call on a slightly enlarged, upscaled crop; the boundary
+/// moves only toward frames where both signals agree (coverage at least
+/// `threshold_exit` and a detected text box), and never farther than the
+/// window. Frames whose coverage is already below `threshold_exit` skip the
+/// OCR call entirely (they cannot qualify), and coverage already recorded in
+/// `known_coverage` (the pixel scan's evidence series) is reused instead of
+/// reloading the frame. Falls back to the pixel boundary when no frame
+/// qualifies.
+int SnapBoundaryJoint(FrameDetector const& detect, hardsub::FrameLoader const& loader,
+                      hardsub::RegionImage const& tpl, std::vector<int> const& text_pixels,
+                      int region_x, int region_y, int boundary, int window,
+                      double threshold_exit, bool find_earliest,
+                      std::map<int, double> const* known_coverage,
+                      hardsub::CancelFn const& cancel) {
+	std::vector<int> frames;
+	std::vector<double> coverage;
+	std::vector<bool> ocr_box;
+	wxString temp;
 
-	if (find_earliest) {
-		for (int f = boundary - window; f <= boundary + window; ++f) {
-			if (cancel && cancel())
-				break;
-			if (check_frame(f)) {
-				best = f;
-				break;
+	for (int f = boundary - window; f <= boundary + window; ++f) {
+		if (cancel && cancel())
+			break;
+
+		double cov = -1.0;
+		std::shared_ptr<VideoFrame> frame_data;
+		if (known_coverage) {
+			auto it = known_coverage->find(f);
+			if (it != known_coverage->end())
+				cov = it->second;
+		}
+		if (cov < 0.0) {
+			frame_data = loader(f);
+			if (!frame_data)
+				continue;
+			auto crop = hardsub::CropRegion(*frame_data, region_x, region_y,
+			                                tpl.width, tpl.height);
+			if (!crop.Valid())
+				continue;
+			cov = hardsub::TemplateTextCoverage(tpl, crop, text_pixels);
+		}
+		coverage.push_back(cov);
+
+		// OCR on a slightly enlarged crop (a tight selection should not cut
+		// characters off), upscaled for better small-text detection. The
+		// pixel check above uses the exact region; only the OCR input gets the
+		// margin so the boundary stays tied to the user's selection.
+		bool box = false;
+		if (cov >= threshold_exit) {
+			if (!frame_data)
+				frame_data = loader(f);
+			if (frame_data) {
+				auto ocr_crop = hardsub::CropRegion(*frame_data, region_x - 6, region_y - 6,
+				                                    tpl.width + 12, tpl.height + 12);
+				if (ocr_crop.Valid()) {
+					wxImage img(ocr_crop.width, ocr_crop.height);
+					if (img.GetData()) {
+						std::memcpy(img.GetData(), ocr_crop.rgb.data(), ocr_crop.rgb.size());
+						img = img.Scale(ocr_crop.width * 2, ocr_crop.height * 2,
+						                wxIMAGE_QUALITY_BICUBIC);
+						if (temp.empty())
+							temp = wxFileName::CreateTempFileName("aegisub-hardsub-");
+						if (!temp.empty() && img.SaveFile(temp, wxBITMAP_TYPE_PNG)) {
+							auto result = detect(agi::fs::path(std::wstring(temp.wc_str())));
+							agi::fs::Remove(agi::fs::path(std::wstring(temp.wc_str())));
+							box = result.ok && !result.lines.empty();
+						}
+					}
+				}
 			}
 		}
+		ocr_box.push_back(box);
+		frames.push_back(f);
 	}
-	else {
-		for (int f = boundary + window; f >= boundary - window; --f) {
-			if (cancel && cancel())
-				break;
-			if (check_frame(f)) {
-				best = f;
-				break;
-			}
+
+	if (!temp.empty())
+		agi::fs::Remove(agi::fs::path(std::wstring(temp.wc_str())));
+	if (frames.empty())
+		return boundary;
+
+	int fallback = boundary - frames.front();
+	int snapped = frames.front()
+		+ hardsub::SnapBoundaryFromEvidence(coverage, ocr_box, threshold_exit,
+		                                    find_earliest, fallback);
+	return snapped;
+}
+
+/// True when the pixel-scan coverage series shows interior frames inside the
+/// reported run whose coverage dips below the enter threshold (dips that the
+/// debounce filled, or a fade between two back-to-back subtitles). Used only
+/// as a merge suspicion hint; the boundaries themselves are not changed by it.
+bool RunHasInteriorDip(hardsub::ScanResult const& result, double enter, int confirm) {
+	if (!result.ok || result.frames.size() < 4)
+		return false;
+	// The scan only produces a dense, contiguous series for short spans;
+	// probe/binary samples for long spans have gaps, so skip those.
+	for (size_t i = 1; i < result.frames.size(); ++i) {
+		if (result.frames[i] - result.frames[i - 1] != 1)
+			return false;
+	}
+	if (result.frames.front() > result.start_frame || result.frames.back() < result.end_frame)
+		return false;
+
+	size_t begin = size_t(result.start_frame - result.frames.front());
+	size_t end = size_t(result.end_frame - result.frames.front());
+	int dip = 0;
+	for (size_t i = begin + 1; i + 1 < end; ++i) {
+		if (result.diffs[i] < enter) {
+			if (++dip >= std::max(1, confirm))
+				return true;
+		}
+		else {
+			dip = 0;
 		}
 	}
-	return best;
+	return false;
 }
 
 /// Content-validate the pixel-scan boundaries: sample the candidate run with
@@ -366,6 +457,8 @@ DialogHardSubScan::DialogHardSubScan(agi::Context *context)
 
 	CreateControls();
 	UpdateControls();
+	ocr_warm_state_ = std::make_shared<OcrWarmState>();
+	StartOcrWarmup();
 
 	persist = agi::make_unique<PersistLocation>(this, "Tool/HardSub");
 
@@ -378,6 +471,16 @@ DialogHardSubScan::DialogHardSubScan(agi::Context *context)
 DialogHardSubScan::~DialogHardSubScan() {
 	recognize_alive_ = false;
 	CancelScan();
+	if (ocr_warm_state_) {
+		{
+			std::lock_guard<std::mutex> lock(ocr_warm_state_->mutex);
+			if (ocr_warm_state_->process)
+				ocr_warm_state_->process->Stop();
+		}
+		// The warmup task keeps the state alive if it is still starting; it
+		// will finish on its own and release the engine.
+		ocr_warm_state_.reset();
+	}
 }
 
 void DialogHardSubScan::CreateControls() {
@@ -415,12 +518,6 @@ void DialogHardSubScan::CreateControls() {
 		                                wxSP_ARROW_KEYS, 0, 100000, 0);
 		max_range_spin->SetToolTip(_("Maximum frames to search in each direction; 0 = search to the video edges automatically."));
 		grid->Add(max_range_spin, 1, wxEXPAND);
-
-		grid->Add(new wxStaticText(this, -1, _("Scan step (frames)")), 0, wxALIGN_CENTER_VERTICAL);
-		stride_spin = new wxSpinCtrl(this, -1, "", wxDefaultPosition, wxSize(-1, -1),
-		                             wxSP_ARROW_KEYS, 1, 100, 32);
-		stride_spin->SetToolTip(_("Frame step of the scan. 1 checks every frame (most accurate); larger values are faster but can miss gaps shorter than the step."));
-		grid->Add(stride_spin, 1, wxEXPAND);
 
 		grid->Add(new wxStaticText(this, -1, _("Text match (%)")), 0, wxALIGN_CENTER_VERTICAL);
 		threshold_spin = new wxSpinCtrl(this, -1, "", wxDefaultPosition, wxSize(-1, -1),
@@ -488,7 +585,6 @@ void DialogHardSubScan::CreateControls() {
 	SetMinSize(GetSize());
 
 	max_range_spin->SetValue(OPT_GET("Tool/HardSub/Max Frames")->GetInt());
-	stride_spin->SetValue(OPT_GET("Tool/HardSub/Stride")->GetInt());
 	threshold_spin->SetValue(OPT_GET("Tool/HardSub/Threshold")->GetInt());
 	confirm_spin->SetValue(OPT_GET("Tool/HardSub/Confirm Frames")->GetInt());
 	min_duration_spin->SetValue(OPT_GET("Tool/HardSub/Min Duration Frames")->GetInt());
@@ -503,6 +599,7 @@ void DialogHardSubScan::CreateControls() {
 	copy_button->Bind(wxEVT_BUTTON, &DialogHardSubScan::OnCopy, this);
 	Bind(EVT_HARDSUB_RECOGNIZE_DONE, &DialogHardSubScan::OnRecognizeDone, this);
 	Bind(EVT_HARDSUB_SCAN_PROGRESS, &DialogHardSubScan::OnScanProgress, this);
+	Bind(EVT_HARDSUB_SCAN_PIXEL_DONE, &DialogHardSubScan::OnScanPixelDone, this);
 	Bind(EVT_HARDSUB_SCAN_DONE, &DialogHardSubScan::OnScanDone, this);
 }
 
@@ -635,20 +732,25 @@ void DialogHardSubScan::StartRecognize(int frame) {
 		ocr::OCREngine fallback_engine;
 		std::string ocr_error;
 		agi::fs::path executable, models_dir, config_path;
-		if (ocr::OCRProcess::FindRuntime(executable, models_dir, config_path, ocr_error)
-		    && process.Start(executable, models_dir, config_path, ocr_error)) {
-			recognize = [&process, &options, handler](agi::fs::path const& image_path) {
-				return process.RunImage(image_path, options, false,
-					[handler] { return !handler->recognize_alive_.load(); });
-			};
+		try {
+			if (ocr::OCRProcess::FindRuntime(executable, models_dir, config_path, ocr_error)
+			    && process.Start(executable, models_dir, config_path, ocr_error)) {
+				recognize = [&process, &options, handler](agi::fs::path const& image_path) {
+					return process.RunImage(image_path, options, false,
+						[handler] { return !handler->recognize_alive_.load(); });
+				};
+			}
+			else if (fallback_engine.GetDiagnostic(options).empty()) {
+				recognize = [&fallback_engine, options](agi::fs::path const& image_path) {
+					return fallback_engine.RecognizeImage(image_path, options);
+				};
+			}
+			else {
+				outcome.error = ocr_error.empty() ? "OCR runtime is unavailable." : ocr_error;
+			}
 		}
-		else if (fallback_engine.GetDiagnostic(options).empty()) {
-			recognize = [&fallback_engine, options](agi::fs::path const& image_path) {
-				return fallback_engine.RecognizeImage(image_path, options);
-			};
-		}
-		else {
-			outcome.error = ocr_error.empty() ? "OCR runtime is unavailable." : ocr_error;
+		catch (...) {
+			outcome.error = "OCR runtime failed to start.";
 		}
 
 		if (recognize) {
@@ -755,7 +857,6 @@ void DialogHardSubScan::OnScan(wxCommandEvent&) {
 	CancelScan();
 
 	OPT_SET("Tool/HardSub/Max Frames")->SetInt(max_range_spin->GetValue());
-	OPT_SET("Tool/HardSub/Stride")->SetInt(stride_spin->GetValue());
 	OPT_SET("Tool/HardSub/Threshold")->SetInt(threshold_spin->GetValue());
 	OPT_SET("Tool/HardSub/Confirm Frames")->SetInt(confirm_spin->GetValue());
 	OPT_SET("Tool/HardSub/Min Duration Frames")->SetInt(min_duration_spin->GetValue());
@@ -764,8 +865,13 @@ void DialogHardSubScan::OnScan(wxCommandEvent&) {
 
 	hardsub::ScanOptions options;
 	options.max_frames = max_range_spin->GetValue();
-	options.stride = stride_spin->GetValue();
 	options.threshold = threshold_spin->GetValue() / 100.0;
+	// The exit threshold is deliberately much lower than the enter threshold
+	// so the hysteresis zone covers slow fades: frames fading in/out keep the
+	// run state, and the OCR boundary confirmation (which only runs when the
+	// boundary is ambiguous) can pull the edge back to the first/last frame
+	// where the text is actually readable.
+	options.threshold_exit = std::max(0.15, options.threshold * 0.5);
 	options.confirm_frames = confirm_spin->GetValue();
 	options.min_duration_frames = min_duration_spin->GetValue();
 
@@ -779,6 +885,7 @@ void DialogHardSubScan::OnScan(wxCommandEvent&) {
 	std::string reference_text = from_wx(text_ctrl->GetValue());
 	if (strict_ocr && reference_text.empty())
 		strict_ocr = false;
+	std::vector<int> keyframes = c->project->VideoProvider()->GetKeyFrames();
 
 	ocr::OCREngine engine;
 	ocr::OCROptions ocr_options;
@@ -799,9 +906,23 @@ void DialogHardSubScan::OnScan(wxCommandEvent&) {
 	SetStatus(_("Scanning frames..."));
 	UpdateControls();
 
+	// Pause playback while scanning: the scan saturates the video decoder
+	// worker with synchronous frame requests, which would otherwise starve
+	// playback and make the UI appear frozen.
+	resume_playback_ = c->videoController->IsPlaying();
+	if (resume_playback_)
+		c->videoController->Stop();
+
 	auto handler = this;
-	scan_thread_ = std::thread([handler, options, tpl, region_x, region_y, base_frame, frame_count,
-	                            confirm_with_ocr, strict_ocr, reference_text, ocr_options]{
+	agi::fs::path video_filename;
+	if (auto provider = c->project->VideoProvider())
+		video_filename = provider->GetFilename();
+	int region_w = region_.GetWidth();
+	int region_h = region_.GetHeight();
+
+	scan_thread_ = std::thread([handler, options, tpl, region_x, region_y, region_w, region_h,
+	                            base_frame, frame_count, confirm_with_ocr, strict_ocr,
+	                            reference_text, ocr_options, keyframes, video_filename]{
 		auto loader = [handler](int frame) -> std::shared_ptr<VideoFrame> {
 			if (handler->cancel_scan_.load())
 				return {};
@@ -809,103 +930,235 @@ void DialogHardSubScan::OnScan(wxCommandEvent&) {
 				return {};
 			return handler->c->videoController->GetFrame(frame, true);
 		};
+
+		// The normal provider path converts every 4K frame to BGRA, which
+		// costs about 100 ms per frame and makes a dense scan of a long
+		// subtitle take close to a minute. When the file is FFMS2-readable,
+		// open a lightweight scan decoder that hands us native YUV frames
+		// (CropRegion converts only the selected region), dropping the
+		// per-frame cost to a few milliseconds. If that fails for any reason
+		// the scan falls back to the normal provider path.
+		std::string decoder_error;
+		auto decoder = std::make_shared<hardsub::ScanVideoDecoder>(video_filename, decoder_error);
+		bool use_decoder = !video_filename.empty() && decoder->Valid();
+		auto scan_tpl = tpl;
+		if (use_decoder) {
+			auto base = decoder->GetFrame(base_frame);
+			if (base) {
+				auto rebuilt = hardsub::CropRegion(*base, region_x, region_y, region_w, region_h);
+				if (rebuilt.Valid())
+					scan_tpl = std::move(rebuilt);
+				else
+					use_decoder = false;
+			}
+			else
+				use_decoder = false;
+		}
+		auto scan_loader = use_decoder
+			? hardsub::FrameLoader([decoder](int frame) {
+				return decoder->GetFrame(frame);
+			})
+			: loader;
+
 		auto cancel = [handler] { return handler->cancel_scan_.load(); };
 		auto progress = [handler](int done, int total) {
 			handler->AddPendingEvent(ValueEvent<HardSubScanProgress>(
 				EVT_HARDSUB_SCAN_PROGRESS, -1, HardSubScanProgress{done, total}));
 		};
 
-		// Prefer a single persistent OCR process for the whole boundary batch;
-		// fall back to the one-shot engine when the persistent mode is not
-		// available (e.g. non-Windows builds or a broken runtime). The strict
-		// pass needs full recognition (text), while the fast confirmation only
-		// needs detection (boxes), so both lambdas can share the same process.
-		FrameDetector detect;
-		FrameDetector recognize;
-		ocr::OCRProcess persistent_process;
-		ocr::OCREngine fallback_engine;
-		std::string ocr_error;
-		if (confirm_with_ocr || strict_ocr) {
-			agi::fs::path executable, models_dir, config_path;
-			if (ocr::OCRProcess::FindRuntime(executable, models_dir, config_path, ocr_error)
-			    && persistent_process.Start(executable, models_dir, config_path, ocr_error)) {
-				if (confirm_with_ocr)
-					detect = [&persistent_process, &ocr_options, &cancel](agi::fs::path const& image_path) {
-						return persistent_process.RunImage(image_path, ocr_options, true, cancel);
-					};
-				if (strict_ocr)
-					recognize = [&persistent_process, &ocr_options, &cancel](agi::fs::path const& image_path) {
-						return persistent_process.RunImage(image_path, ocr_options, false, cancel);
-					};
+		// The detection-only engine is pre-warmed by the dialog (model loading
+		// overlaps region selection and text editing); the strict pass needs
+		// recognized text, so it starts its own full-pipeline engine
+		// asynchronously and only when enabled.
+		auto start_full_process = []() -> std::shared_ptr<ocr::OCRProcess> {
+			try {
+				auto process = std::make_shared<ocr::OCRProcess>();
+				agi::fs::path executable, models_dir, config_path;
+				std::string diagnostic;
+				if (ocr::OCRProcess::FindRuntime(executable, models_dir, config_path, diagnostic)
+				    && process->Start(executable, models_dir, config_path, diagnostic))
+					return process;
 			}
-			else {
-				if (confirm_with_ocr && fallback_engine.GetDetectionDiagnostic(ocr_options).empty()) {
-					detect = [&fallback_engine, &ocr_options](agi::fs::path const& image_path) {
-						return fallback_engine.DetectTextRegions(image_path, ocr_options);
-					};
-				}
-				if (strict_ocr && fallback_engine.GetDiagnostic(ocr_options).empty()) {
-					recognize = [&fallback_engine, &ocr_options](agi::fs::path const& image_path) {
-						return fallback_engine.RecognizeImage(image_path, ocr_options);
-					};
-				}
+			catch (...) {
 			}
-		}
+			return {};
+		};
+
+		std::future<std::shared_ptr<ocr::OCRProcess>> strict_ready;
+		if (strict_ocr)
+			strict_ready = std::async(std::launch::async, start_full_process);
 
 		HardSubScanOutcome outcome;
-		outcome.result = hardsub::ScanBoundaries(tpl, region_x, region_y, base_frame, frame_count,
-		                                         options, loader, cancel, progress);
-		if (cancel()) {
-			outcome.cancelled = true;
-		}
-		else if (!outcome.result.ok) {
-			outcome.error = outcome.result.error.empty()
-				? "Could not find a subtitle run around the base frame. "
-				  "Try a lower text match value or check the selected region."
-				: outcome.result.error;
-		}
-		else {
-			bool strict_applied = false;
-			if (strict_ocr && recognize) {
-				strict_applied = RefineTimelineWithOcr(recognize, loader, tpl, region_x, region_y,
-				                                       base_frame, frame_count, outcome.result,
-				                                       reference_text, cancel, progress);
-				if (cancel())
-					outcome.cancelled = true;
-			}
-
-			if (!outcome.cancelled && !strict_applied && detect) {
-				int window = 2;
-				int start = AdjustBoundaryWithOcr(detect, loader, tpl, region_x, region_y,
-				                                  outcome.result.start_frame, window, true, cancel);
-				int end = AdjustBoundaryWithOcr(detect, loader, tpl, region_x, region_y,
-				                                outcome.result.end_frame, window, false, cancel);
-				start = std::max(start, outcome.result.start_frame - window);
-				end = std::min(end, outcome.result.end_frame + window);
-				if (start <= end && start <= base_frame && end >= base_frame) {
-					outcome.result.start_frame = start;
-					outcome.result.end_frame = end;
-				}
-			}
-
-			if (!cancel()) {
-				outcome.ok = true;
-				outcome.start_ms = handler->c->videoController->TimeAtFrame(
-					outcome.result.start_frame, agi::vfr::START);
-				outcome.end_ms = handler->c->videoController->TimeAtFrame(
-					outcome.result.end_frame, agi::vfr::END);
-				// Sanity check: a duration far longer than the text length
-				// suggests is a strong sign that consecutive subtitles were
-				// merged into one run.
-				if (strict_applied) {
-					int duration_ms = outcome.end_ms - outcome.start_ms;
-					int plausible_ms = std::max(1000, NonSpaceLength(reference_text) * 60);
-					outcome.suspect_merge = duration_ms > plausible_ms * 3;
-				}
-			}
-			else {
+		try {
+			outcome.result = hardsub::ScanBoundaries(scan_tpl, region_x, region_y, base_frame,
+			                                         frame_count, options, scan_loader, cancel,
+			                                         progress, keyframes);
+			if (cancel()) {
 				outcome.cancelled = true;
 			}
+			else if (!outcome.result.ok) {
+				outcome.error = outcome.result.error.empty()
+					? "Could not find a subtitle run around the base frame. "
+					  "Try a lower text match value or check the selected region."
+					: outcome.result.error;
+			}
+			else {
+				// Wait for the OCR engine(s) to finish loading while keeping
+				// the scan cancellable; a missing engine just disables the
+				// OCR phase and the pixel result stands.
+				std::shared_ptr<ocr::OCRProcess> full_process;
+				auto wait_for_process = [&](std::future<std::shared_ptr<ocr::OCRProcess>>& ready,
+				                            std::shared_ptr<ocr::OCRProcess>& out) {
+					if (!ready.valid() || cancel())
+						return;
+					for (int i = 0; i < 50; ++i) {
+						if (ready.wait_for(std::chrono::milliseconds(100))
+						    == std::future_status::ready)
+							break;
+						if (cancel())
+							return;
+					}
+					if (ready.wait_for(std::chrono::milliseconds(0))
+					    == std::future_status::ready) {
+						try { out = ready.get(); } catch (...) { }
+					}
+				};
+				wait_for_process(strict_ready, full_process);
+
+				// The pre-warmed detection-only engine: it has been loading
+				// since the dialog opened; wait briefly for it (the pixel
+				// scan above already gave it time), then proceed without OCR
+				// if it is still not ready so the scan stays fast.
+				std::shared_ptr<ocr::OCRProcess> detect_process;
+				{
+					auto state = handler->ocr_warm_state_;
+					if (state) {
+						for (int i = 0; i < 15 && !cancel(); ++i) {
+							if (state->ready.load())
+								break;
+							std::this_thread::sleep_for(std::chrono::milliseconds(100));
+						}
+						if (state->ready.load()) {
+							std::lock_guard<std::mutex> lock(state->mutex);
+							detect_process = state->process;
+						}
+					}
+				}
+
+				FrameDetector detect;
+				FrameDetector recognize;
+				if (confirm_with_ocr && !strict_ocr && detect_process) {
+					detect = [&detect_process, &ocr_options, &cancel](agi::fs::path const& image_path) {
+						return detect_process->RunImage(image_path, ocr_options, true, cancel);
+					};
+				}
+				if (strict_ocr && full_process) {
+					recognize = [&full_process, &ocr_options, &cancel](agi::fs::path const& image_path) {
+						return full_process->RunImage(image_path, ocr_options, false, cancel);
+					};
+				}
+				else if (strict_ocr) {
+					// One-shot engine fallback for platforms where the
+					// persistent process is unavailable.
+					ocr::OCREngine fallback_engine;
+					if (fallback_engine.GetDiagnostic(ocr_options).empty()) {
+						recognize = [&fallback_engine, &ocr_options](agi::fs::path const& image_path) {
+							return fallback_engine.RecognizeImage(image_path, ocr_options);
+						};
+					}
+				}
+
+				bool may_refine = detect || (strict_ocr && recognize);
+				if (!cancel() && may_refine) {
+					// Show the frame-precise pixel result immediately; the OCR
+					// verification below refines it and posts the final result.
+					HardSubScanOutcome prelim;
+					prelim.ok = true;
+					prelim.preliminary = true;
+					prelim.result = outcome.result;
+					prelim.start_ms = handler->c->videoController->TimeAtFrame(
+						outcome.result.start_frame, agi::vfr::START);
+					prelim.end_ms = handler->c->videoController->TimeAtFrame(
+						outcome.result.end_frame, agi::vfr::END);
+					handler->AddPendingEvent(ValueEvent<HardSubScanOutcome>(
+						EVT_HARDSUB_SCAN_PIXEL_DONE, -1, std::move(prelim)));
+				}
+
+				bool strict_applied = false;
+				if (strict_ocr && recognize) {
+					strict_applied = RefineTimelineWithOcr(recognize, scan_loader, scan_tpl, region_x,
+					                                       region_y, base_frame, frame_count,
+					                                       outcome.result, reference_text,
+					                                       cancel, progress);
+					if (cancel())
+						outcome.cancelled = true;
+				}
+
+				if (!outcome.cancelled && !strict_applied && detect) {
+					int window = 2;
+					auto text_pixels = hardsub::TemplateTextPixels(scan_tpl);
+					if (!text_pixels.empty()) {
+						// Reuse the coverage the pixel scan already computed
+						// for the boundary windows instead of reloading frames.
+						std::map<int, double> cov_map;
+						for (size_t i = 0; i < outcome.result.frames.size(); ++i)
+							cov_map.emplace(outcome.result.frames[i], outcome.result.diffs[i]);
+
+						// OCR confirmation only helps when the pixel edge is
+						// ambiguous (a fade or occlusion leaves text-like
+						// coverage just outside the run); clean edges are
+						// already frame-exact and skip the OCR calls.
+						int start = outcome.result.start_frame;
+						int end = outcome.result.end_frame;
+						if (hardsub::BoundaryAmbiguous(outcome.result, options.threshold_exit, true))
+							start = SnapBoundaryJoint(detect, scan_loader, scan_tpl, text_pixels,
+							                          region_x, region_y, start, window,
+							                          options.threshold_exit, true, &cov_map,
+							                          cancel);
+						if (hardsub::BoundaryAmbiguous(outcome.result, options.threshold_exit, false))
+							end = SnapBoundaryJoint(detect, scan_loader, scan_tpl, text_pixels,
+							                        region_x, region_y, end, window,
+							                        options.threshold_exit, false, &cov_map,
+							                        cancel);
+						start = std::max(start, outcome.result.start_frame - window);
+						end = std::min(end, outcome.result.end_frame + window);
+						if (start <= end && start <= base_frame && end >= base_frame) {
+							outcome.result.start_frame = start;
+							outcome.result.end_frame = end;
+						}
+					}
+				}
+
+				if (!cancel()) {
+					outcome.ok = true;
+					outcome.start_ms = handler->c->videoController->TimeAtFrame(
+						outcome.result.start_frame, agi::vfr::START);
+					outcome.end_ms = handler->c->videoController->TimeAtFrame(
+						outcome.result.end_frame, agi::vfr::END);
+					// Sanity check: a duration far longer than the text
+					// length suggests is a strong sign that consecutive
+					// subtitles were merged into one run.
+					if (!reference_text.empty()) {
+						int duration_ms = outcome.end_ms - outcome.start_ms;
+						int plausible_ms = std::max(1000, NonSpaceLength(reference_text) * 60);
+						outcome.suspect_merge = duration_ms > plausible_ms * 3;
+					}
+					outcome.suspect_merge = outcome.suspect_merge
+						|| RunHasInteriorDip(outcome.result, options.threshold,
+						                     options.confirm_frames);
+				}
+				else {
+					outcome.cancelled = true;
+				}
+			}
+		}
+		catch (std::exception const& e) {
+			outcome = HardSubScanOutcome();
+			outcome.error = std::string("Hard subtitle scan failed: ") + e.what();
+		}
+		catch (...) {
+			outcome = HardSubScanOutcome();
+			outcome.error = "Hard subtitle scan failed with an unknown error.";
 		}
 		handler->AddPendingEvent(ValueEvent<HardSubScanOutcome>(
 			EVT_HARDSUB_SCAN_DONE, -1, std::move(outcome)));
@@ -920,10 +1173,30 @@ void DialogHardSubScan::OnScanProgress(ValueEvent<HardSubScanProgress>& event) {
 	}
 }
 
+void DialogHardSubScan::OnScanPixelDone(ValueEvent<HardSubScanOutcome>& event) {
+	auto const& outcome = event.Get();
+	if (!outcome.ok || !outcome.result.ok)
+		return;
+
+	wxString label = agi::wxformat(
+		_("Pixel scan: frame %d (%s) to frame %d (%s)\n"
+		  "Verifying boundaries with OCR..."),
+		outcome.result.start_frame, agi::Time(outcome.start_ms).GetAssFormatted(true),
+		outcome.result.end_frame, agi::Time(outcome.end_ms).GetAssFormatted(true));
+	result_label->SetLabelText(label);
+	SetStatus(_("Verifying boundaries with OCR..."));
+	Layout();
+}
+
 void DialogHardSubScan::OnScanDone(ValueEvent<HardSubScanOutcome>& event) {
 	auto outcome = event.Get();
 	scanning_ = false;
 	progress->Hide();
+
+	if (resume_playback_) {
+		resume_playback_ = false;
+		c->videoController->Play();
+	}
 
 	if (outcome.cancelled) {
 		SetStatus(_("Scan cancelled."));
@@ -938,8 +1211,8 @@ void DialogHardSubScan::OnScanDone(ValueEvent<HardSubScanOutcome>& event) {
 			scan_result_.end_frame, agi::Time(scan_end_ms_).GetAssFormatted(true),
 			scan_result_.end_frame - scan_result_.start_frame + 1);
 		if (outcome.suspect_merge) {
-			label += _("\nWarning: the duration is far longer than the text length suggests; "
-			           "the range may contain multiple subtitles. Check the boundaries before inserting.");
+			label += _("\nWarning: the range may contain multiple subtitles or a mid-run "
+			           "transition. Check the boundaries before inserting.");
 		}
 		result_label->SetLabelText(label);
 		SetStatus(_("Scan complete."));
@@ -1012,4 +1285,38 @@ void DialogHardSubScan::CancelScan() {
 	if (scan_thread_.joinable())
 		scan_thread_.join();
 	scanning_ = false;
+	if (resume_playback_) {
+		resume_playback_ = false;
+		c->videoController->Play();
+	}
+}
+
+void DialogHardSubScan::StartOcrWarmup() {
+	auto state = ocr_warm_state_;
+	if (!state)
+		return;
+
+	// Start the detection-only engine on the background dispatcher so model
+	// loading (a few seconds) happens while the user selects the region and
+	// edits the text, not on the scan critical path. The task captures the
+	// shared state by value, never the dialog, so it is safe to close the
+	// dialog while the engine is still loading; dispatch also routes any
+	// exception to the crash handler instead of terminating the process.
+	agi::dispatch::Background().Async([state] {
+		try {
+			auto process = std::make_shared<ocr::OCRProcess>();
+			agi::fs::path executable, models_dir, config_path;
+			std::string diagnostic;
+			if (ocr::OCRProcess::FindRuntime(executable, models_dir, config_path, diagnostic)
+			    && process->Start(executable, models_dir, config_path, diagnostic,
+			                      ocr::OCRProcessConfig{true, false, false})) {
+				std::lock_guard<std::mutex> lock(state->mutex);
+				state->process = std::move(process);
+				state->ready = true;
+			}
+		}
+		catch (...) {
+			// OCR startup failure must never crash the app.
+		}
+	});
 }

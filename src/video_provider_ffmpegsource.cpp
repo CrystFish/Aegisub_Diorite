@@ -129,6 +129,8 @@ catch (agi::EnvironmentError const& err) {
 }
 
 void FFmpegSourceVideoProvider::LoadVideo(agi::fs::path const& filename, std::string const& colormatrix) {
+	FFMS_SetHardwareDecoding(OPT_GET("Provider/Video/FFmpegSource/Hardware Decoding")->GetBool());
+
 	FFMS_Indexer *Indexer = FFMS_CreateIndexer(filename.string().c_str(), &ErrInfo);
 	if (!Indexer) {
 		if (ErrInfo.SubType == FFMS_ERROR_FILE_READ)

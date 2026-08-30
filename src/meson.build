@@ -123,6 +123,7 @@ aegisub_src = files(
     'ocr/ocr_process.cpp',
     'pen.cpp',
     'persist_location.cpp',
+    'scan_video_decoder.cpp',
     'localization/localization_loader.cpp',
     'localization/localization_matcher.cpp',
     'preferences.cpp',

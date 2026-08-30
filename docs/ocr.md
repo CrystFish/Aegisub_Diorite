@@ -49,6 +49,43 @@ The OCR dialog uses this folder next to `aegisub.exe`. If any required file is
 deleted, Aegisub reports the exact missing path and the files present in that
 folder.
 
+## Hard subtitle scan
+
+`Video > Hard Subtitle Scan` selects a video region, recognizes its text, and
+detects the frame-exact start/end of the burned-in subtitle:
+
+1. A fast pixel scan decodes one contiguous ascending pass over the run.
+   Random frame seeks on modern codecs (4K/AV1) cost about a second each
+   because a whole GOP must be decoded, while sequential decoding is a few
+   milliseconds per frame, so the scan aligns the pass start to a keyframe
+   (cheap seek) and then decodes forward through the whole subtitle. Both
+   boundaries are read off the resulting per-frame coverage series. The scan
+   only uses the template's text pixels, so background motion does not affect
+   it, and coverage hysteresis (appear vs. disappear thresholds) plus a
+   debounce filter keep fades and single-frame noise from shifting the
+   boundaries. The text mask is built from luminance extremes (bright white or
+   very dark ink) rather than background deviation, so moving scene texture
+   behind the subtitle does not make the coverage fluctuate.
+2. When enabled (default), boundaries are confirmed with the bundled OCR
+   runtime in detection-only mode (`-det=true -rec=false -cls=false`), which
+   only needs text boxes and is several times faster than full recognition.
+   Confirmation only runs when a boundary is ambiguous (a fade or occlusion
+   leaves text-like coverage just outside the run), and the boundary moves at
+   most a couple of frames, only toward frames where both the pixel signal and
+   OCR agree.
+3. A lightweight content check warns when the detected range may contain
+   multiple subtitles (duration far longer than the text suggests, or an
+   interior pixel dip). The opt-in "Strict timeline (OCR text check)" option
+   performs a slower full-recognition sweep that compares each sampled frame's
+   text against the reference.
+
+The OCR engine for boundary checks is started asynchronously when the scan
+begins, so model loading overlaps the pixel scan instead of adding to the scan
+time, and it is torn down when the scan finishes (no OCR process is kept alive
+while the dialog is merely open). Video playback is paused for the duration of
+the scan so the decoder worker is not contended. Scans typically finish in
+1–4 seconds depending on video resolution, codec and run length.
+
 The packaging step removes the unused PaddleOCR-json sample language packs and
 PP-OCRv4 model folders from `ocr/models`. Release artifacts keep only the active
 PP-OCRv5 server detector/server recognizer assets, the PP-OCRv5 dictionary and

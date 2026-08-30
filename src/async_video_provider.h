@@ -45,6 +45,9 @@ class AsyncVideoProvider {
 	std::unique_ptr<SubtitlesProvider> subs_provider;
 	/// Video provider
 	std::unique_ptr<VideoProvider> source_provider;
+	/// File the video was opened from (used by the hard subtitle scan to
+	/// create a lightweight scan decoder for the same file)
+	agi::fs::path filename;
 	/// Event handler to send FrameReady events to
 	wxEvtHandler *parent;
 
@@ -135,6 +138,8 @@ public:
 	std::string GetDecoderName() const    { return source_provider->GetDecoderName(); }
 	bool ShouldSetVideoProperties() const { return source_provider->ShouldSetVideoProperties(); }
 	bool HasAudio() const                 { return source_provider->HasAudio(); }
+	/// The file this provider was opened from
+	agi::fs::path const& GetFilename() const { return filename; }
 
 	/// @brief Constructor
 	/// @param videoFileName File to open

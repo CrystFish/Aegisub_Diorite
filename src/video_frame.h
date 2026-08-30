@@ -26,6 +26,10 @@ struct VideoFrame {
 	size_t height;
 	size_t pitch;
 	bool flipped;
+	/// Pixel format of the data. 0 = packed BGRA (pitch = width * 4),
+	/// 1 = 8-bit YUV 4:2:0 planar (Y, U, V planes), 2 = 8-bit NV12
+	/// (Y plane + interleaved UV plane). Other formats are treated as BGRA.
+	int pix_fmt = 0;
 };
 
 wxImage GetImage(VideoFrame const& frame);

@@ -73,14 +73,14 @@ struct ScanOptions {
 	/// walking outward from the base frame, so this is only a safety limit.
 	int max_frames = 0;
 	/// Fraction of the template's text pixels that must still match for a frame
-	/// to count as showing the subtitle (0..1).
+	/// to count as showing the subtitle (0..1). This is the "enter" threshold:
+	/// coverage at or above it flips the state machine to present.
 	double threshold = 0.40;
-	/// Frame step of the outward walk. 1 examines every frame, so any gap at
-	/// least `confirm_frames` wide splits the run and the boundaries are exact.
-	/// Larger values skip frames between samples: the scan is faster but gaps
-	/// narrower than the step can be missed. The boundary is always refined
-	/// frame by frame around the transition.
-	int stride = 32;
+	/// Hysteresis "exit" threshold (0..threshold). Coverage below this flips
+	/// the state machine to absent; between `threshold_exit` and `threshold`
+	/// the state is held, which keeps a slowly fading subtitle from flickering.
+	/// 0 means exit = threshold * 0.75.
+	double threshold_exit = 0.30;
 	/// Debounce: present/absent runs shorter than this many frames are removed
 	/// (0 disables the filter)
 	int confirm_frames = 2;
@@ -109,16 +109,67 @@ using CancelFn = std::function<bool()>;
 using ProgressFn = std::function<void(int, int)>;
 
 /// Find the contiguous run of frames around base_frame in which the region
-/// content matches the template. Starting from base_frame, the scan walks
-/// outward at ScanOptions::stride until the run clearly ends, then refines the
-/// two boundaries frame by frame; ScanOptions::max_frames optionally caps how
-/// far it may search. The template region origin is given by (tpl_x, tpl_y);
-/// its size comes from tpl.
+/// content matches the template.
+///
+/// Random frame access is far more expensive than sequential decoding on
+/// modern codecs (a 4K/AV1 seek decodes a whole GOP, ~1 s, while a sequential
+/// frame costs a few ms), so the scan avoids arbitrary-frame probes entirely:
+/// it starts one contiguous ascending pass at a keyframe before the run
+/// (extending the start backward through keyframes only while the coverage
+/// there still looks like the subtitle), then decodes forward until the run
+/// has clearly ended after the base frame. Both boundaries are read off the
+/// resulting dense presence series, which is exact and also splits the run at
+/// interior gaps. `keyframes` should be the provider's keyframe list so the
+/// pass start can be aligned to cheap seeks; when empty a fixed pre-roll is
+/// used. ScanOptions::max_frames optionally caps how far it may search. The
+/// template region origin is given by (tpl_x, tpl_y); its size comes from tpl.
 ScanResult ScanBoundaries(RegionImage const& tpl, int tpl_x, int tpl_y,
                           int base_frame, int frame_count,
                           ScanOptions const& opts,
                           FrameLoader const& loader,
                           CancelFn const& cancel = CancelFn(),
-                          ProgressFn const& progress = ProgressFn());
+                          ProgressFn const& progress = ProgressFn(),
+                          std::vector<int> const& keyframes = {});
+
+// ---- Pure helpers shared by the scan and the dialog's OCR confirmation -----
+// These operate on dense, ascending per-frame evidence so they can be unit
+// tested without a GUI or a decoder.
+
+/// Per-frame presence after hysteresis. When `ocr_box` is non-empty it must
+/// have the same size as `coverage`, and a frame is only present when the OCR
+/// evidence agrees (a missing box vetoes the frame even when the coverage is
+/// high). Frames with coverage below zero are treated as unevaluated and keep
+/// the previous state.
+std::vector<bool> ComputePresence(std::vector<double> const& coverage,
+                                  std::vector<bool> const& ocr_box,
+                                  double threshold, double threshold_exit);
+
+/// Fill interior absent runs shorter than `confirm_frames` (0 disables the
+/// filter). Leading and trailing absent runs are preserved, so the run does
+/// not extend past the evaluated window.
+std::vector<bool> FillShortDips(std::vector<bool> const& present, int confirm_frames);
+
+/// Index of the first frame of the contiguous present run containing `anchor`.
+/// Returns `anchor` when the anchor frame is not present.
+int RunStart(std::vector<bool> const& present, int anchor);
+/// Index of the last frame of the contiguous present run containing `anchor`.
+/// Returns `anchor` when the anchor frame is not present.
+int RunEnd(std::vector<bool> const& present, int anchor);
+
+/// Snap a boundary within a window of ascending evidence: `find_earliest`
+/// picks the first frame whose pixel coverage is at least `threshold_exit` and
+/// whose OCR evidence shows a box; otherwise the last such frame. Returns
+/// `fallback` when no frame qualifies. Used to move a pixel boundary by at
+/// most the evaluated window, and only toward frames both signals agree on.
+int SnapBoundaryFromEvidence(std::vector<double> const& coverage,
+                             std::vector<bool> const& ocr_box,
+                             double threshold_exit, bool find_earliest, int fallback);
+
+/// True when the pixel evidence around a boundary is ambiguous (frames just
+/// outside the run still have coverage at or above `threshold_exit`, e.g. a
+/// fade or partial occlusion), meaning OCR confirmation is worth running.
+/// Also returns true when the evidence series is not dense enough to tell, so
+/// callers never skip OCR on insufficient data.
+bool BoundaryAmbiguous(ScanResult const& result, double threshold_exit, bool start);
 
 } // namespace hardsub

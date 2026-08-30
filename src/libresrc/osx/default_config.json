@@ -394,6 +394,7 @@
 			},
 			"FFmpegSource" : {
 				"Decoding Threads" : -1,
+				"Hardware Decoding" : false,
 				"Unsafe Seeking" : false
 			},
 			"BestSource" : {
@@ -527,8 +528,7 @@
 			"Maximized" : false,
 			"Max Frames" : 0,
 			"Min Duration Frames" : 0,
-			"Strict OCR Check" : true,
-			"Stride" : 32,
+			"Strict OCR Check" : false,
 			"Threshold" : 40
 		},
 		"Kanji Timer" : {

@@ -90,7 +90,8 @@ OCRProcess::~OCRProcess() {
 }
 
 bool OCRProcess::Start(agi::fs::path const& executable, agi::fs::path const& models_dir,
-                       agi::fs::path const& config_path, std::string& diagnostic) {
+                       agi::fs::path const& config_path, std::string& diagnostic,
+                       OCRProcessConfig config) {
 	Stop();
 	diagnostic.clear();
 
@@ -148,6 +149,11 @@ bool OCRProcess::Start(agi::fs::path const& executable, agi::fs::path const& mod
 	command += L" -models_path=\"" + models_dir.wstring() + L"\"";
 	command += L" -config_path=\"" + config_path.wstring() + L"\"";
 	command += L" -ensure_ascii=false";
+	command += config.det ? L" -det=true" : L" -det=false";
+	command += config.rec ? L" -rec=true" : L" -rec=false";
+	command += config.cls ? L" -cls=true" : L" -cls=false";
+	if (!config.cls)
+		command += L" -use_angle_cls=false";
 
 	PROCESS_INFORMATION pi;
 	std::memset(&pi, 0, sizeof(pi));
