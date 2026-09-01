@@ -14,6 +14,8 @@
 
 #include "ocr_process.h"
 
+#include "../compat.h"
+#include "../format.h"
 #include "../options.h"
 
 #include <libaegisub/fs.h>
@@ -23,6 +25,8 @@
 #include <cctype>
 #include <cstdio>
 #include <cstring>
+
+#include <wx/intl.h>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -96,19 +100,19 @@ bool OCRProcess::Start(agi::fs::path const& executable, agi::fs::path const& mod
 	diagnostic.clear();
 
 #ifndef _WIN32
-	diagnostic = "Persistent OCR process is only available on Windows builds.";
+	diagnostic = from_wx(_("Persistent OCR process is only available on Windows builds."));
 	return false;
 #else
 	if (!agi::fs::FileExists(executable)) {
-		diagnostic = "OCR runtime executable not found: " + executable.string();
+		diagnostic = from_wx(agi::wxformat(_("OCR runtime executable not found: %s"), executable.string()));
 		return false;
 	}
 	if (!agi::fs::DirectoryExists(models_dir)) {
-		diagnostic = "OCR models directory not found: " + models_dir.string();
+		diagnostic = from_wx(agi::wxformat(_("OCR models directory not found: %s"), models_dir.string()));
 		return false;
 	}
 	if (!agi::fs::FileExists(config_path)) {
-		diagnostic = "OCR config file not found: " + config_path.string();
+		diagnostic = from_wx(agi::wxformat(_("OCR config file not found: %s"), config_path.string()));
 		return false;
 	}
 
@@ -119,14 +123,14 @@ bool OCRProcess::Start(agi::fs::path const& executable, agi::fs::path const& mod
 
 	HANDLE stdin_read = nullptr;
 	if (!CreatePipe(&stdin_read, &impl->stdin_write, &sa, 0)) {
-		diagnostic = "Failed to create OCR stdin pipe.";
+		diagnostic = from_wx(_("Failed to create OCR stdin pipe."));
 		return false;
 	}
 	HANDLE stdout_write = nullptr;
 	if (!CreatePipe(&impl->stdout_read, &stdout_write, &sa, 0)) {
 		CloseHandle(stdin_read);
 		impl->stdin_write = nullptr;
-		diagnostic = "Failed to create OCR stdout pipe.";
+		diagnostic = from_wx(_("Failed to create OCR stdout pipe."));
 		return false;
 	}
 
@@ -159,7 +163,7 @@ bool OCRProcess::Start(agi::fs::path const& executable, agi::fs::path const& mod
 	std::memset(&pi, 0, sizeof(pi));
 	if (!CreateProcessW(nullptr, &command[0], nullptr, nullptr, TRUE,
 	                    CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
-		diagnostic = "Failed to start OCR runtime process.";
+		diagnostic = from_wx(_("Failed to start OCR runtime process."));
 		CloseHandle(stdin_read);
 		CloseHandle(stdout_write);
 		CloseHandle(impl->stdin_write);
@@ -192,7 +196,7 @@ bool OCRProcess::Start(agi::fs::path const& executable, agi::fs::path const& mod
 	while (!initialized && elapsed < init_timeout_ms) {
 		DWORD available = 0;
 		if (!PeekNamedPipe(impl->stdout_read, nullptr, 0, nullptr, &available, nullptr)) {
-			diagnostic = "Failed inspecting OCR runtime output during initialization.";
+			diagnostic = from_wx(_("Failed inspecting OCR runtime output during initialization."));
 			Stop();
 			return false;
 		}
@@ -202,7 +206,7 @@ bool OCRProcess::Start(agi::fs::path const& executable, agi::fs::path const& mod
 			DWORD got = 0;
 			if (!ReadFile(impl->stdout_read, chunk, std::min<DWORD>(available, sizeof(chunk)),
 			              &got, nullptr) || got == 0) {
-				diagnostic = "Failed reading OCR runtime output during initialization.";
+				diagnostic = from_wx(_("Failed reading OCR runtime output during initialization."));
 				Stop();
 				return false;
 			}
@@ -221,7 +225,7 @@ bool OCRProcess::Start(agi::fs::path const& executable, agi::fs::path const& mod
 		}
 
 		if (WaitForSingleObject(impl->child, 0) == WAIT_OBJECT_0) {
-			diagnostic = "OCR runtime exited during initialization.\n\n" + startup_output;
+			diagnostic = from_wx(_("OCR runtime exited during initialization.\n\n")) + startup_output;
 			Stop();
 			return false;
 		}
@@ -231,7 +235,7 @@ bool OCRProcess::Start(agi::fs::path const& executable, agi::fs::path const& mod
 	}
 
 	if (!initialized) {
-		diagnostic = "OCR runtime timed out while initializing.\n\n" + startup_output;
+		diagnostic = from_wx(_("OCR runtime timed out while initializing.\n\n")) + startup_output;
 		Stop();
 		return false;
 	}
@@ -246,7 +250,7 @@ bool OCRProcess::FindRuntime(agi::fs::path& executable, agi::fs::path& models_di
 
 	auto runtime_dir = config::path->Decode("?data/ocr");
 	if (!agi::fs::DirectoryExists(runtime_dir)) {
-		diagnostic = "OCR files are not installed. Reinstall Aegisub and select the OCR option to enable this feature.";
+		diagnostic = from_wx(_("OCR files are not installed. Reinstall Aegisub and select the OCR option to enable this feature."));
 		return false;
 	}
 
@@ -256,7 +260,7 @@ bool OCRProcess::FindRuntime(agi::fs::path& executable, agi::fs::path& models_di
 
 	if (!agi::fs::FileExists(executable) || !agi::fs::DirectoryExists(models_dir)
 	    || !agi::fs::FileExists(config_path)) {
-		diagnostic = "OCR files are missing or incomplete. Reinstall Aegisub and select the OCR option to repair this feature.";
+		diagnostic = from_wx(_("OCR files are missing or incomplete. Reinstall Aegisub and select the OCR option to repair this feature."));
 		return false;
 	}
 
@@ -268,11 +272,11 @@ OCRResult OCRProcess::RunImage(agi::fs::path const& image_path, OCROptions const
 	OCRResult result;
 
 #ifndef _WIN32
-	result.diagnostic = "Persistent OCR process is only available on Windows builds.";
+	result.diagnostic = from_wx(_("Persistent OCR process is only available on Windows builds."));
 	return result;
 #else
 	if (!impl->running || !impl->child || !impl->stdin_write || !impl->stdout_read) {
-		result.diagnostic = "OCR process is not running.";
+		result.diagnostic = from_wx(_("OCR process is not running."));
 		return result;
 	}
 
@@ -281,7 +285,7 @@ OCRResult OCRProcess::RunImage(agi::fs::path const& image_path, OCROptions const
 	// wstring is UTF-16 on Windows; convert to UTF-8 for the JSON request.
 	int needed = WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), -1, nullptr, 0, nullptr, nullptr);
 	if (needed <= 0) {
-		result.diagnostic = "Failed to convert the image path for the OCR process.";
+		result.diagnostic = from_wx(_("Failed to convert the image path for the OCR process."));
 		return result;
 	}
 	utf8_path.resize(needed - 1);
@@ -297,7 +301,7 @@ OCRResult OCRProcess::RunImage(agi::fs::path const& image_path, OCROptions const
 	DWORD written = 0;
 	if (!WriteFile(impl->stdin_write, json.data(), static_cast<DWORD>(json.size()),
 	               &written, nullptr) || written != json.size()) {
-		result.diagnostic = "Failed to send image to OCR process.";
+		result.diagnostic = from_wx(_("Failed to send image to OCR process."));
 		return result;
 	}
 
@@ -321,7 +325,7 @@ OCRResult OCRProcess::RunImage(agi::fs::path const& image_path, OCROptions const
 		// stream as closed when the child process has actually exited.
 		DWORD available = 0;
 		if (!PeekNamedPipe(impl->stdout_read, nullptr, 0, nullptr, &available, nullptr)) {
-			result.diagnostic = "Failed inspecting OCR process output.";
+			result.diagnostic = from_wx(_("Failed inspecting OCR process output."));
 			Stop();
 			return result;
 		}
@@ -330,7 +334,7 @@ OCRResult OCRProcess::RunImage(agi::fs::path const& image_path, OCROptions const
 			DWORD to_read = std::min<DWORD>(available, sizeof(chunk));
 			DWORD got = 0;
 			if (!ReadFile(impl->stdout_read, chunk, to_read, &got, nullptr) || got == 0) {
-				result.diagnostic = "Failed reading OCR process output.";
+				result.diagnostic = from_wx(_("Failed reading OCR process output."));
 				Stop();
 				return result;
 			}
@@ -358,13 +362,13 @@ OCRResult OCRProcess::RunImage(agi::fs::path const& image_path, OCROptions const
 		}
 
 		if (WaitForSingleObject(impl->child, 0) == WAIT_OBJECT_0) {
-			result.diagnostic = "OCR process closed its output.";
+			result.diagnostic = from_wx(_("OCR process closed its output."));
 			Stop();
 			return result;
 		}
 
 		if (elapsed >= timeout_ms) {
-			result.diagnostic = "OCR process timed out.";
+			result.diagnostic = from_wx(_("OCR process timed out."));
 			Stop();
 			return result;
 		}

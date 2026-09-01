@@ -6950,6 +6950,454 @@ msgstr ""
 msgid "Update Checker:"
 msgstr "自動更新："
 
+#: ../src/dialog_hardsub_scan.cpp ../src/command/vis_tool.cpp
+msgid "Hard Subtitle Scan"
+msgstr "硬字幕掃描"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Hard Subtitle"
+msgstr "硬字幕"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Region and Text"
+msgstr "區域與文字"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Select Region on Video"
+msgstr "在視訊上選擇區域"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "No region selected"
+msgstr "未選擇區域"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Recognize Text"
+msgstr "辨識文字"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Scan Options"
+msgstr "掃描選項"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Max range (frames)"
+msgstr "最大範圍（影格）"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Maximum frames to search in each direction; 0 = search to the video edges automatically."
+msgstr "每個方向搜尋的最大影格數；0 表示自動搜尋至視訊邊緣。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Text match (%)"
+msgstr "文字符合度（%）"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Confirm frames"
+msgstr "確認影格數"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Min duration (frames)"
+msgstr "最短時長（影格）"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Confirm boundaries with OCR"
+msgstr "使用 OCR 確認邊界"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Strict timeline (OCR text check)"
+msgstr "嚴格時間軸（OCR 文字檢查）"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid ""
+"Runs full OCR over the candidate range and compares each frame's recognized text "
+"with the reference text. The boundaries stop as soon as a different subtitle "
+"appears, so consecutive subtitles are not merged into one long line. Slower, "
+"but more accurate."
+msgstr ""
+"對候選範圍執行完整 OCR，並將每影格辨識出的文字與參考文字進行比較。一旦出現不同的字幕即停止邊界擴展，"
+"因此連續字幕不會被合併成一條長句。速度較慢，但更準確。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Scan Start/End Frames"
+msgstr "掃描起始/結束影格"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Ready"
+msgstr "就緒"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Insert Line"
+msgstr "插入行"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Drag a rectangle over the subtitle on the video."
+msgstr "在視訊上拖曳矩形框選字幕。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Region: %d,%d %dx%d @ frame %d"
+msgstr "區域：%d,%d %dx%d @ 第 %d 個影格"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Region locked. Recognizing text..."
+msgstr "區域已鎖定。正在辨識文字…"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Failed to capture region."
+msgstr "無法擷取區域。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Recognizing..."
+msgstr "正在辨識…"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Recognition complete, but no text was found in the region."
+msgstr "辨識完成，但區域內找不到文字。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Recognition complete."
+msgstr "辨識完成。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Recognition failed."
+msgstr "辨識失敗。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Scanning frames..."
+msgstr "正在掃描影格…"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid ""
+"Pixel scan: frame %d (%s) to frame %d (%s)\n"
+"Verifying boundaries with OCR..."
+msgstr ""
+"像素掃描：第 %d 個影格（%s）至第 %d 個影格（%s）\n"
+"正在使用 OCR 驗證邊界…"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Verifying boundaries with OCR..."
+msgstr "正在使用 OCR 驗證邊界…"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Scan cancelled."
+msgstr "掃描已取消。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid ""
+"Start: frame %d (%s)\n"
+"End: frame %d (%s)\n"
+"Duration: %d frames"
+msgstr ""
+"開始：第 %d 個影格（%s）\n"
+"結束：第 %d 個影格（%s）\n"
+"時長：%d 個影格"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid ""
+"\nWarning: the range may contain multiple subtitles or a mid-run "
+"transition. Check the boundaries before inserting."
+msgstr ""
+"\n警告：該範圍可能包含多個字幕或中間過渡。插入前請檢查邊界。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Scan complete."
+msgstr "掃描完成。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "The recognized text is empty. Edit it before inserting."
+msgstr "辨識出的文字為空。請先編輯再插入。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "insert hard subtitle line"
+msgstr "插入硬字幕行"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Subtitle line inserted."
+msgstr "字幕行已插入。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Copied to clipboard."
+msgstr "已複製到剪貼簿。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "OCR runtime is unavailable."
+msgstr "OCR 執行環境不可用。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "OCR runtime failed to start."
+msgstr "OCR 執行環境啟動失敗。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "No OCR result could be read for the region."
+msgstr "無法讀取該區域的 OCR 結果。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Hard subtitle scan failed: %s"
+msgstr "硬字幕掃描失敗：%s"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Hard subtitle scan failed with an unknown error."
+msgstr "硬字幕掃描因未知錯誤失敗。"
+
+#: ../src/command/vis_tool.cpp
+msgid "Select a subtitle region, recognize its text and detect precise start/end frames"
+msgstr "選擇字幕區域，辨識其文字並偵測精確的起始/結束影格"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "Persistent OCR process is only available on Windows builds."
+msgstr "常駐 OCR 程序僅在 Windows 版本中可用。"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "OCR runtime executable not found: %s"
+msgstr "找不到 OCR 執行環境的可執行檔：%s"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "OCR models directory not found: %s"
+msgstr "找不到 OCR 模型目錄：%s"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "OCR config file not found: %s"
+msgstr "找不到 OCR 設定檔：%s"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "Failed to create OCR stdin pipe."
+msgstr "無法建立 OCR 標準輸入管道。"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "Failed to create OCR stdout pipe."
+msgstr "無法建立 OCR 標準輸出管道。"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "Failed to start OCR runtime process."
+msgstr "無法啟動 OCR 執行環境程序。"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "Failed inspecting OCR runtime output during initialization."
+msgstr "初始化期間檢查 OCR 執行環境輸出失敗。"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "Failed reading OCR runtime output during initialization."
+msgstr "初始化期間讀取 OCR 執行環境輸出失敗。"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "OCR runtime exited during initialization.\n\n"
+msgstr "OCR 執行環境在初始化期間結束。\n\n"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "OCR runtime timed out while initializing.\n\n"
+msgstr "OCR 執行環境初始化逾時。\n\n"
+
+#: ../src/ocr/ocr_process.cpp ../src/ocr/ocr_engine.cpp
+msgid "OCR files are not installed. Reinstall Aegisub and select the OCR option to enable this feature."
+msgstr "未安裝 OCR 檔案。請重新安裝 Aegisub 並選擇 OCR 選項以啟用此功能。"
+
+#: ../src/ocr/ocr_process.cpp ../src/ocr/ocr_engine.cpp
+msgid "OCR files are missing or incomplete. Reinstall Aegisub and select the OCR option to repair this feature."
+msgstr "OCR 檔案缺失或不完整。請重新安裝 Aegisub 並選擇 OCR 選項以修復此功能。"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "OCR process is not running."
+msgstr "OCR 程序未在執行。"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "Failed to convert the image path for the OCR process."
+msgstr "無法轉換 OCR 程序的影像路徑。"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "Failed to send image to OCR process."
+msgstr "無法將影像傳送至 OCR 程序。"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "Failed inspecting OCR process output."
+msgstr "檢查 OCR 程序輸出失敗。"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "Failed reading OCR process output."
+msgstr "讀取 OCR 程序輸出失敗。"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "OCR process closed its output."
+msgstr "OCR 程序已關閉其輸出。"
+
+#: ../src/ocr/ocr_process.cpp
+msgid "OCR process timed out."
+msgstr "OCR 程序逾時。"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "PaddleOCR-json failed to load the OCR model. Missing inference.pdmodel."
+msgstr "PaddleOCR-json 無法載入 OCR 模型。缺少 inference.pdmodel。"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "PaddleOCR-json failed to load the OCR model. Missing inference.pdmodel in %s."
+msgstr "PaddleOCR-json 無法載入 OCR 模型。%s 中缺少 inference.pdmodel。"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "PaddleOCR-json failed: %s"
+msgstr "PaddleOCR-json 失敗：%s"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "PaddleOCR-json failed before returning OCR JSON."
+msgstr "PaddleOCR-json 在傳回 OCR JSON 之前失敗。"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "\n\nDebug details:\nExit code: "
+msgstr "\n\n偵錯詳情：\n結束代碼："
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "\nRuntime stdout:\n"
+msgstr "\n執行階段標準輸出：\n"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "\nRuntime stderr:\n"
+msgstr "\n執行階段標準錯誤：\n"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "<empty>"
+msgstr "（空）"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "OCR runtime returned an unexpected backend: %s"
+msgstr "OCR 執行環境傳回了意外的後端：%s"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "OCR runtime returned Image2Text JSON without a regions field."
+msgstr "OCR 執行環境傳回的 Image2Text JSON 缺少 regions 欄位。"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "OCR runtime did not return JSON.\n\nOutput:\n"
+msgstr "OCR 執行環境未傳回 JSON。\n\n輸出：\n"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "OCR runtime returned extra non-JSON text around the OCR result.\n\nOutput:\n"
+msgstr "OCR 執行環境在 OCR 結果周圍傳回了額外的非 JSON 文字。\n\n輸出：\n"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "OCR runtime returned JSON without a data field."
+msgstr "OCR 執行環境傳回的 JSON 缺少 data 欄位。"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "OCR runtime returned an error without a readable message."
+msgstr "OCR 執行環境傳回了錯誤，但沒有可讀的訊息。"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "OCR runtime returned malformed JSON instead of a clean Image2Text result.\n\nOutput:\n"
+msgstr "OCR 執行環境傳回了格式錯誤的 JSON，而不是乾淨的 Image2Text 結果。\n\n輸出：\n"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "OCR runtime returned an invalid Image2Text result.\n\nOutput:\n"
+msgstr "OCR 執行環境傳回了無效的 Image2Text 結果。\n\n輸出：\n"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "Image file does not exist: %s"
+msgstr "影像檔案不存在：%s"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid ""
+"OCR model file is missing:\n"
+"%s\n"
+"\n"
+"PaddleOCR-json requires %s model folders to contain inference.pdmodel and inference.pdiparams."
+msgstr ""
+"OCR 模型檔案缺失：\n"
+"%s\n"
+"\n"
+"PaddleOCR-json 要求 %s 模型資料夾包含 inference.pdmodel 和 inference.pdiparams。"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid ""
+"This folder contains the official PP-OCRv5 Paddle 3/PIR files. The bundled PaddleOCR-json runtime cannot load that "
+"model format directly; the Windows packaging step must export the PP-OCRv5 model to the legacy Paddle Inference format "
+"first."
+msgstr ""
+"此資料夾包含官方 PP-OCRv5 Paddle 3/PIR 檔案。內建的 PaddleOCR-json 執行環境無法直接載入該模型格式；"
+"Windows 打包步驟必須先將 PP-OCRv5 模型匯出為舊版 Paddle Inference 格式。"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "\n\nFolder path:\n"
+msgstr "\n\n資料夾路徑：\n"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "\nFiles present:\n"
+msgstr "\n目前檔案：\n"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "\n\nActive config file path:\n"
+msgstr "\n\n目前設定檔路徑：\n"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "\nSelected det_model_dir:\n"
+msgstr "\n選定的 det_model_dir：\n"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "\nSelected cls_model_dir:\n"
+msgstr "\n選定的 cls_model_dir：\n"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "\nSelected rec_model_dir:\n"
+msgstr "\n選定的 rec_model_dir：\n"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "\nSelected dictionary path:\n"
+msgstr "\n選定的字典路徑：\n"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid ""
+"OCR model configuration is incomplete:\n"
+"%s\n"
+"\n"
+"Missing required setting: %s"
+msgstr ""
+"OCR 模型設定不完整：\n"
+"%s\n"
+"\n"
+"缺少必要設定：%s"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "OCR recognition dictionary is missing:\n%s"
+msgstr "OCR 辨識字典缺失：\n%s"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "Bundled OCR is currently available only in Windows release artifacts."
+msgstr "內建 OCR 目前僅在 Windows 發行版中可用。"
+
+#: ../src/ocr/ocr_engine.cpp
+msgid "This build was configured without bundled PaddleOCR support. Build Windows artifacts with -Dpaddleocr=enabled."
+msgstr "此版本未設定內建 PaddleOCR 支援。請使用 -Dpaddleocr=enabled 建置 Windows 版本。"
+
+#: ../src/scan_video_decoder.cpp
+msgid "Failed to open video for scanning: %s"
+msgstr "無法開啟視訊進行掃描：%s"
+
+#: ../src/scan_video_decoder.cpp
+msgid "Failed to index video for scanning: %s"
+msgstr "無法為視訊建立索引以進行掃描：%s"
+
+#: ../src/scan_video_decoder.cpp
+msgid "The video has no indexed video track."
+msgstr "視訊沒有已建立索引的視訊軌道。"
+
+#: ../src/scan_video_decoder.cpp
+msgid "Failed to open video source for scanning: %s"
+msgstr "無法開啟視訊來源進行掃描：%s"
+
+#: ../src/scan_video_decoder.cpp
+msgid "Failed to read video properties for scanning."
+msgstr "無法讀取視訊屬性以進行掃描。"
+
+#: ../src/scan_video_decoder.cpp
+msgid "Failed to decode the first frame for scanning: %s"
+msgstr "無法解碼第一個影格以進行掃描：%s"
+
+#: ../src/scan_video_decoder.cpp
+msgid "The video's pixel format is not supported by the fast scan path."
+msgstr "快速掃描路徑不支援此視訊的像素格式。"
+
+#: ../src/scan_video_decoder.cpp
+msgid "FFMS2 support is not available in this build."
+msgstr "此版本不提供 FFMS2 支援。"
+
+#: ../src/hardsub_scan.cpp
+msgid "The selected region has no text-like pixels. Draw the box tighter around the subtitle."
+msgstr "所選區域沒有類似文字的像素。請將選取框緊貼字幕。"
+
 #~ msgid "    Subtitle format handler: %s"
 #~ msgstr "    字幕格式處理器： %s"
 

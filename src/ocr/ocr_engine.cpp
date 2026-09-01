@@ -175,8 +175,8 @@ std::string MissingModelFileMessage(std::string const& line) {
 
 	auto folder = ParentFolderName(path);
 	if (folder.empty())
-		return "PaddleOCR-json failed to load the OCR model. Missing inference.pdmodel.";
-	return "PaddleOCR-json failed to load the OCR model. Missing inference.pdmodel in " + folder + ".";
+		return from_wx(_("PaddleOCR-json failed to load the OCR model. Missing inference.pdmodel."));
+	return from_wx(agi::wxformat(_("PaddleOCR-json failed to load the OCR model. Missing inference.pdmodel in %s."), folder));
 }
 
 std::string FirstUsefulRuntimeError(std::string const& stdout_text, std::string const& stderr_text) {
@@ -202,16 +202,16 @@ std::string FirstUsefulRuntimeError(std::string const& stdout_text, std::string 
 		if (line.find("Error") != std::string::npos ||
 			line.find("Exception") != std::string::npos ||
 			line.find("Cannot open file") != std::string::npos)
-			return "PaddleOCR-json failed: " + line;
+			return from_wx(agi::wxformat(_("PaddleOCR-json failed: %s"), line));
 	}
 
-	return "PaddleOCR-json failed before returning OCR JSON.";
+	return from_wx(_("PaddleOCR-json failed before returning OCR JSON."));
 }
 
 std::string RuntimeDebugDetails(std::string const& stdout_text, std::string const& stderr_text, long code) {
-	std::string details = "\n\nDebug details:\nExit code: " + std::to_string(code);
-	details += "\nRuntime stdout:\n" + (stdout_text.empty() ? std::string("<empty>") : stdout_text);
-	details += "\nRuntime stderr:\n" + (stderr_text.empty() ? std::string("<empty>") : stderr_text);
+	std::string details = from_wx(_("\n\nDebug details:\nExit code: ")) + std::to_string(code);
+	details += from_wx(_("\nRuntime stdout:\n")) + (stdout_text.empty() ? from_wx(_("<empty>")) : stdout_text);
+	details += from_wx(_("\nRuntime stderr:\n")) + (stderr_text.empty() ? from_wx(_("<empty>")) : stderr_text);
 	return details;
 }
 
@@ -364,13 +364,13 @@ std::string FilesPresent(agi::fs::path const& folder) {
 
 std::string ModelValidationDiagnostic(std::string const& message, agi::fs::path const& folder, ModelConfig const& config) {
 	std::string diagnostic = message;
-	diagnostic += "\n\nFolder path:\n" + folder.string();
-	diagnostic += "\nFiles present:\n" + FilesPresent(folder);
-	diagnostic += "\n\nActive config file path:\n" + config.config_path.string();
-	diagnostic += "\nSelected det_model_dir:\n" + config.det_model_dir.string();
-	diagnostic += "\nSelected cls_model_dir:\n" + config.cls_model_dir.string();
-	diagnostic += "\nSelected rec_model_dir:\n" + config.rec_model_dir.string();
-	diagnostic += "\nSelected dictionary path:\n" + config.rec_char_dict_path.string();
+	diagnostic += from_wx(_("\n\nFolder path:\n")) + folder.string();
+	diagnostic += from_wx(_("\nFiles present:\n")) + FilesPresent(folder);
+	diagnostic += from_wx(_("\n\nActive config file path:\n")) + config.config_path.string();
+	diagnostic += from_wx(_("\nSelected det_model_dir:\n")) + config.det_model_dir.string();
+	diagnostic += from_wx(_("\nSelected cls_model_dir:\n")) + config.cls_model_dir.string();
+	diagnostic += from_wx(_("\nSelected rec_model_dir:\n")) + config.rec_model_dir.string();
+	diagnostic += from_wx(_("\nSelected dictionary path:\n")) + config.rec_char_dict_path.string();
 	return diagnostic;
 }
 
@@ -378,10 +378,11 @@ std::string ValidateModelDirectory(std::string const& role, agi::fs::path const&
 	for (auto const& file_name : {"inference.pdmodel", "inference.pdiparams"}) {
 		auto file_path = folder / file_name;
 		if (!agi::fs::FileExists(file_path)) {
-			std::string message = "OCR model file is missing:\n" + file_path.string() +
-				"\n\nPaddleOCR-json requires " + role + " model folders to contain inference.pdmodel and inference.pdiparams.";
+			std::string message = from_wx(agi::wxformat(
+				_("OCR model file is missing:\n%s\n\nPaddleOCR-json requires %s model folders to contain inference.pdmodel and inference.pdiparams."),
+				file_path.string(), role));
 			if (agi::fs::FileExists(folder / "inference.json"))
-				message += "\n\nThis folder contains the official PP-OCRv5 Paddle 3/PIR files. The bundled PaddleOCR-json runtime cannot load that model format directly; the Windows packaging step must export the PP-OCRv5 model to the legacy Paddle Inference format first.";
+				message += from_wx(_("\n\nThis folder contains the official PP-OCRv5 Paddle 3/PIR files. The bundled PaddleOCR-json runtime cannot load that model format directly; the Windows packaging step must export the PP-OCRv5 model to the legacy Paddle Inference format first."));
 
 			return ModelValidationDiagnostic(message, folder, config);
 		}
@@ -392,7 +393,8 @@ std::string ValidateModelDirectory(std::string const& role, agi::fs::path const&
 
 std::string ValidateModelConfig(ModelConfig const& config, bool detect_only) {
 	if (!config.missing_setting.empty())
-		return "OCR model configuration is incomplete:\n" + config.config_path.string() + "\n\nMissing required setting: " + config.missing_setting;
+		return from_wx(agi::wxformat(_("OCR model configuration is incomplete:\n%s\n\nMissing required setting: %s"),
+		                             config.config_path.string(), config.missing_setting));
 
 	auto diagnostic = ValidateModelDirectory("detection", config.det_model_dir, config);
 	if (!diagnostic.empty())
@@ -413,7 +415,7 @@ std::string ValidateModelConfig(ModelConfig const& config, bool detect_only) {
 
 	if (!agi::fs::FileExists(config.rec_char_dict_path))
 		return ModelValidationDiagnostic(
-			"OCR recognition dictionary is missing:\n" + config.rec_char_dict_path.string(),
+			from_wx(agi::wxformat(_("OCR recognition dictionary is missing:\n%s"), config.rec_char_dict_path.string())),
 			config.rec_char_dict_path.parent_path(),
 			config);
 
@@ -514,7 +516,7 @@ OCRResult ParseImage2TextContract(json::Object const& root, OCROptions const& op
 
 	auto backend = GetString(root, "backend");
 	if (!backend.empty() && backend != "paddleocr-json") {
-		result.diagnostic = "OCR runtime returned an unexpected backend: " + backend;
+		result.diagnostic = from_wx(agi::wxformat(_("OCR runtime returned an unexpected backend: %s"), backend));
 		return result;
 	}
 
@@ -526,7 +528,7 @@ OCRResult ParseImage2TextContract(json::Object const& root, OCROptions const& op
 
 	auto regions_it = root.find("regions");
 	if (regions_it == root.end()) {
-		result.diagnostic = "OCR runtime returned Image2Text JSON without a regions field.";
+		result.diagnostic = from_wx(_("OCR runtime returned Image2Text JSON without a regions field."));
 		return result;
 	}
 
@@ -554,7 +556,7 @@ OCRResult ParsePaddleOCRJson(std::string const& json_text, OCROptions const& opt
 	OCRResult result;
 
 	if (!StartsWithJson(json_text)) {
-		result.diagnostic = "OCR runtime did not return JSON.\n\nOutput:\n" + json_text;
+		result.diagnostic = from_wx(_("OCR runtime did not return JSON.\n\nOutput:\n")) + json_text;
 		return result;
 	}
 
@@ -564,7 +566,7 @@ OCRResult ParsePaddleOCRJson(std::string const& json_text, OCROptions const& opt
 		json::Reader::Read(root_element, stream);
 		stream >> std::ws;
 		if (!stream.eof()) {
-			result.diagnostic = "OCR runtime returned extra non-JSON text around the OCR result.\n\nOutput:\n" + json_text;
+			result.diagnostic = from_wx(_("OCR runtime returned extra non-JSON text around the OCR result.\n\nOutput:\n")) + json_text;
 			return result;
 		}
 
@@ -575,7 +577,7 @@ OCRResult ParsePaddleOCRJson(std::string const& json_text, OCROptions const& opt
 		result.code = GetInteger(root, "code");
 		auto data_it = root.find("data");
 		if (data_it == root.end()) {
-			result.diagnostic = "OCR runtime returned JSON without a data field.";
+			result.diagnostic = from_wx(_("OCR runtime returned JSON without a data field."));
 			return result;
 		}
 
@@ -615,13 +617,13 @@ OCRResult ParsePaddleOCRJson(std::string const& json_text, OCROptions const& opt
 
 		result.diagnostic = GetDataAsString(data_it->second);
 		if (result.diagnostic.empty())
-			result.diagnostic = "OCR runtime returned an error without a readable message.";
+			result.diagnostic = from_wx(_("OCR runtime returned an error without a readable message."));
 	}
 	catch (json::Exception const&) {
-		result.diagnostic = "OCR runtime returned malformed JSON instead of a clean Image2Text result.\n\nOutput:\n" + json_text;
+		result.diagnostic = from_wx(_("OCR runtime returned malformed JSON instead of a clean Image2Text result.\n\nOutput:\n")) + json_text;
 	}
 	catch (std::exception const&) {
-		result.diagnostic = "OCR runtime returned an invalid Image2Text result.\n\nOutput:\n" + json_text;
+		result.diagnostic = from_wx(_("OCR runtime returned an invalid Image2Text result.\n\nOutput:\n")) + json_text;
 	}
 
 	return result;
@@ -690,7 +692,7 @@ OCRResult OCREngine::RunImage(agi::fs::path const& image_path, OCROptions const&
 	}
 
 	if (!agi::fs::FileExists(image_path)) {
-		result.diagnostic = "Image file does not exist: " + image_path.string();
+		result.diagnostic = from_wx(agi::wxformat(_("Image file does not exist: %s"), image_path.string()));
 		return result;
 	}
 

@@ -14,11 +14,15 @@
 
 #include "hardsub_scan.h"
 
+#include "format.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <cstdint>
 #include <map>
+
+#include <wx/intl.h>
 
 namespace hardsub {
 
@@ -392,7 +396,7 @@ ScanResult ScanBoundaries(RegionImage const& tpl, int tpl_x, int tpl_y,
 
 	auto text_pixels = TemplateTextPixels(tpl);
 	if (text_pixels.empty()) {
-		out.error = "The selected region has no text-like pixels. Draw the box tighter around the subtitle.";
+		out.error = agi::format(_("The selected region has no text-like pixels. Draw the box tighter around the subtitle."));
 		return out;
 	}
 

@@ -501,9 +501,11 @@ void DialogHardSubScan::CreateControls() {
 		recognize_button = new wxButton(this, -1, _("Recognize Text"));
 		box->Add(recognize_button, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
 
-		text_ctrl = new wxTextCtrl(this, -1, "", wxDefaultPosition, wxSize(-1, 96),
+		text_ctrl = new wxTextCtrl(this, -1, "", wxDefaultPosition, wxDefaultSize,
 		                           wxTE_MULTILINE | wxTE_RICH2);
-		text_ctrl->SetMinSize(wxSize(-1, 96));
+		// Default to a 4-line OCR result box; it still grows with the dialog.
+		const int text_lines = 4;
+		text_ctrl->SetMinSize(wxSize(-1, text_ctrl->GetCharHeight() * text_lines + 8));
 		box->Add(text_ctrl, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
 	}
 	main_sizer->Add(box, 1, wxEXPAND | wxALL, 5);
@@ -551,6 +553,7 @@ void DialogHardSubScan::CreateControls() {
 	}
 	main_sizer->Add(options_box, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5);
 
+	int info_lines = 0;
 	{
 		scan_button = new wxButton(this, -1, _("Scan Start/End Frames"));
 		main_sizer->Add(scan_button, 0, wxEXPAND | wxLEFT | wxRIGHT, 4);
@@ -563,8 +566,13 @@ void DialogHardSubScan::CreateControls() {
 		main_sizer->Add(status_label, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
 
 		result_label = new wxStaticText(this, -1, "");
-		result_label->SetMinSize(wxSize(380, 60));
-		main_sizer->Add(result_label, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
+		// The info area shares window space with the region box and defaults
+		// to 4.5 text lines of height, which fits the longest scan result
+		// (3-line summary plus the merge warning).
+		info_lines = static_cast<int>(result_label->GetCharHeight() * 4.5);
+		// Min width is a quarter smaller than the original 380.
+		result_label->SetMinSize(wxSize(285, info_lines));
+		main_sizer->Add(result_label, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 4);
 
 		auto action_row = new wxBoxSizer(wxHORIZONTAL);
 		insert_button = new wxButton(this, -1, _("Insert Line"));
@@ -581,8 +589,18 @@ void DialogHardSubScan::CreateControls() {
 	}
 
 	SetSizerAndFit(main_sizer);
-	SetSize(std::max(GetSize().GetWidth(), 480), GetSize().GetHeight() + 100);
-	SetMinSize(GetSize());
+	Layout();
+	// The minimum height is the fixed content (buttons, options, status line);
+	// the flexible OCR box and info area compress when the window shrinks.
+	const int fixed_min_height = GetSize().GetHeight()
+		- text_ctrl->GetSize().GetHeight() - result_label->GetSize().GetHeight();
+	// Open compact instead of at the full fitted size: the info area starts at
+	// about half of its 4.5-line default, so the dialog does not need to be
+	// dragged smaller by hand. Enlarging the window reveals the full area.
+	const int compact_offset = info_lines / 2;
+	SetSize(std::max(GetSize().GetWidth(), 360), GetSize().GetHeight() - compact_offset);
+	// Minimum width is a quarter smaller than the original 480.
+	SetMinSize(wxSize(360, std::max(260, fixed_min_height)));
 
 	max_range_spin->SetValue(OPT_GET("Tool/HardSub/Max Frames")->GetInt());
 	threshold_spin->SetValue(OPT_GET("Tool/HardSub/Threshold")->GetInt());
@@ -746,11 +764,11 @@ void DialogHardSubScan::StartRecognize(int frame) {
 				};
 			}
 			else {
-				outcome.error = ocr_error.empty() ? "OCR runtime is unavailable." : ocr_error;
+				outcome.error = ocr_error.empty() ? from_wx(_("OCR runtime is unavailable.")) : ocr_error;
 			}
 		}
 		catch (...) {
-			outcome.error = "OCR runtime failed to start.";
+			outcome.error = from_wx(_("OCR runtime failed to start."));
 		}
 
 		if (recognize) {
@@ -826,7 +844,7 @@ void DialogHardSubScan::StartRecognize(int frame) {
 			outcome.ok = any_ok;
 			outcome.text = best_text;
 			if (!any_ok && outcome.error.empty())
-				outcome.error = "No OCR result could be read for the region.";
+				outcome.error = from_wx(_("No OCR result could be read for the region."));
 		}
 
 		if (handler->recognize_alive_.load())
@@ -1154,11 +1172,11 @@ void DialogHardSubScan::OnScan(wxCommandEvent&) {
 		}
 		catch (std::exception const& e) {
 			outcome = HardSubScanOutcome();
-			outcome.error = std::string("Hard subtitle scan failed: ") + e.what();
+			outcome.error = from_wx(agi::wxformat(_("Hard subtitle scan failed: %s"), e.what()));
 		}
 		catch (...) {
 			outcome = HardSubScanOutcome();
-			outcome.error = "Hard subtitle scan failed with an unknown error.";
+			outcome.error = from_wx(_("Hard subtitle scan failed with an unknown error."));
 		}
 		handler->AddPendingEvent(ValueEvent<HardSubScanOutcome>(
 			EVT_HARDSUB_SCAN_DONE, -1, std::move(outcome)));

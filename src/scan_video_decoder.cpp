@@ -14,6 +14,11 @@
 
 #include "scan_video_decoder.h"
 
+#include "compat.h"
+#include "format.h"
+
+#include <wx/intl.h>
+
 #ifdef WITH_FFMS2
 
 #include "ffmpegsource_common.h"
@@ -54,13 +59,13 @@ ScanVideoDecoder::ScanVideoDecoder(agi::fs::path const& filename, std::string& e
 	if (!idx) {
 		FFMS_Indexer *ix = FFMS_CreateIndexer(narrow.c_str(), &err);
 		if (!ix) {
-			error = std::string("Failed to open video for scanning: ") + errbuf;
+			error = from_wx(agi::wxformat(_("Failed to open video for scanning: %s"), errbuf));
 			return;
 		}
 		FFMS_TrackTypeIndexSettings(ix, FFMS_TYPE_VIDEO, 1, 0);
 		idx = FFMS_DoIndexing2(ix, cache_source.GetErrorHandlingMode(), &err);
 		if (!idx) {
-			error = std::string("Failed to index video for scanning: ") + errbuf;
+			error = from_wx(agi::wxformat(_("Failed to index video for scanning: %s"), errbuf));
 			return;
 		}
 	}
@@ -68,7 +73,7 @@ ScanVideoDecoder::ScanVideoDecoder(agi::fs::path const& filename, std::string& e
 
 	int track = FFMS_GetFirstIndexedTrackOfType(idx, FFMS_TYPE_VIDEO, &err);
 	if (track < 0) {
-		error = "The video has no indexed video track.";
+		error = from_wx(_("The video has no indexed video track."));
 		return;
 	}
 
@@ -79,13 +84,13 @@ ScanVideoDecoder::ScanVideoDecoder(agi::fs::path const& filename, std::string& e
 
 	source_ = FFMS_CreateVideoSource(narrow.c_str(), track, idx, threads, seek_mode, &err);
 	if (!source_) {
-		error = std::string("Failed to open video source for scanning: ") + errbuf;
+		error = from_wx(agi::wxformat(_("Failed to open video source for scanning: %s"), errbuf));
 		return;
 	}
 
 	const FFMS_VideoProperties *vp = FFMS_GetVideoProperties(static_cast<FFMS_VideoSource*>(source_));
 	if (!vp) {
-		error = "Failed to read video properties for scanning.";
+		error = from_wx(_("Failed to read video properties for scanning."));
 		return;
 	}
 	frame_count_ = vp->NumFrames;
@@ -95,7 +100,7 @@ ScanVideoDecoder::ScanVideoDecoder(agi::fs::path const& filename, std::string& e
 	// native YUV output avoids the full-frame conversion.
 	const FFMS_Frame *fr = FFMS_GetFrame(static_cast<FFMS_VideoSource*>(source_), 0, &err);
 	if (!fr) {
-		error = std::string("Failed to decode the first frame for scanning: ") + errbuf;
+		error = from_wx(agi::wxformat(_("Failed to decode the first frame for scanning: %s"), errbuf));
 		return;
 	}
 	width_ = fr->EncodedWidth;
@@ -113,7 +118,7 @@ ScanVideoDecoder::ScanVideoDecoder(agi::fs::path const& filename, std::string& e
 	else {
 		// Unsupported native format: fall back to the caller's normal path
 		// instead of silently producing wrong colors.
-		error = "The video's pixel format is not supported by the fast scan path.";
+		error = from_wx(_("The video's pixel format is not supported by the fast scan path."));
 		return;
 	}
 }
@@ -187,7 +192,7 @@ std::shared_ptr<VideoFrame> ScanVideoDecoder::GetFrame(int n) const {
 namespace hardsub {
 
 ScanVideoDecoder::ScanVideoDecoder(agi::fs::path const&, std::string& error) {
-	error = "FFMS2 support is not available in this build.";
+	error = from_wx(_("FFMS2 support is not available in this build."));
 }
 
 ScanVideoDecoder::~ScanVideoDecoder() = default;
