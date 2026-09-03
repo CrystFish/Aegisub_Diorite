@@ -7398,6 +7398,14 @@ msgstr "此版本不提供 FFMS2 支援。"
 msgid "The selected region has no text-like pixels. Draw the box tighter around the subtitle."
 msgstr "所選區域沒有類似文字的像素。請將選取框緊貼字幕。"
 
+#: ../src/dialog_hardsub_scan.cpp
+msgid "Text recognition is still running. Wait for it to finish before inserting."
+msgstr "文字識別仍在進行中，請等待完成後再插入。"
+
+#: ../src/dialog_hardsub_scan.cpp
+msgid "The recognized text does not belong to the current region. Recognize the text again before inserting."
+msgstr "識別出的文字不屬於當前區域，請重新識別後再插入。"
+
 #~ msgid "    Subtitle format handler: %s"
 #~ msgstr "    字幕格式處理器： %s"
 
