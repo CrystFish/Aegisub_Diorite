@@ -276,13 +276,15 @@ DialogLocalization::Impl::Impl(DialogLocalization *dialog, agi::Context *c)
 	dialog->Layout();
 	// The options are laid out on short rows now, so the fitted size is
 	// already well below the original one-row layout. Cap it at a compact
-	// width and keep the minimum below that so the user can still drag the
-	// window narrower by hand.
+	// width, then open about 30% wider than that so the results table has
+	// room to breathe. The minimum stays below the default so the user can
+	// still drag the window narrower by hand.
 	const int fit_width = dialog->GetSize().GetWidth();
 	const int fit_height = dialog->GetSize().GetHeight();
 	const int compact_width = std::min(fit_width, 640);
+	const int default_width = compact_width * 13 / 10;
 	const int min_width = std::max(420, compact_width - 140);
-	dialog->SetSize(compact_width, fit_height);
+	dialog->SetSize(default_width, fit_height);
 	dialog->SetMinSize(wxSize(min_width, fit_height));
 	dialog->CenterOnParent();
 

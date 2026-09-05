@@ -7590,6 +7590,19 @@ msgstr "  |  OCR %d"
 msgid "insert hard subtitle lines"
 msgstr "插入硬字幕行"
 
+#: ../src/dialog_localization.cpp
+msgid "Prefer results without split-regex text"
+msgstr "優先選擇不含斷句正則的結果"
+
+#: ../src/dialog_localization.cpp
+msgid ""
+"When a split regex is set, list results whose localized text contains no "
+"match of that regex first, so cleaned segments are preferred over results "
+"that still carry the unsplit tag text."
+msgstr ""
+"設定斷句正則後，把本地化文字中不含該正則匹配內容的結果排在前面，優先選擇已"
+"清理的片段，而不是仍帶有未拆分標籤文字的結果。"
+
 #~ msgid "    Subtitle format handler: %s"
 #~ msgstr "    字幕格式處理器： %s"
 
