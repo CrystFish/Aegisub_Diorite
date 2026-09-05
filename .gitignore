@@ -42,7 +42,8 @@ subprojects/libffi*
 subprojects/libpng-*
 subprojects/luajit
 subprojects/nasm-*
-subprojects/packagecache
+subprojects/packagecache/*
+!subprojects/packagecache/soundtouch-2.3.3.tar.gz
 subprojects/proxy-libintl*
 subprojects/soundtouch/
 subprojects/wxWidgets
