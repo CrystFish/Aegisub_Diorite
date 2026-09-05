@@ -192,6 +192,8 @@ localization::MatchOptions GetLocalizationOptions() {
 	options.preferred_language = OPT_GET("Tool/Localization/Language")->GetString();
 	options.split_sentences = OPT_GET("Tool/Localization/Split Sentences")->GetBool();
 	options.split_regex = OPT_GET("Tool/Localization/Split Regex")->GetString();
+	options.prefer_without_split_regex =
+		OPT_GET("Tool/Localization/Prefer Without Split Regex")->GetBool();
 	return options;
 }
 

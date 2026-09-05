@@ -50,6 +50,7 @@
 #include <future>
 #include <map>
 #include <mutex>
+#include <numeric>
 #include <thread>
 #include <typeinfo>
 
@@ -67,14 +68,18 @@
 #include <wx/stattext.h>
 #include <wx/textctrl.h>
 
-/// Shared state for the background-pre-warmed detection-only OCR engine. The
-/// warmup task captures a copy of the shared_ptr, so it never touches the
-/// dialog after destruction and the dialog never joins it.
+/// Shared state for a background-pre-warmed OCR engine. The warmup task
+/// captures a copy of the shared_ptr, so it never touches the dialog after
+/// destruction and the dialog never joins it.
 /// Defined at global scope to match the forward declaration in the header.
 struct OcrWarmState {
 	std::mutex mutex;
 	std::shared_ptr<ocr::OCRProcess> process;
 	std::atomic<bool> ready{false};
+	/// Pipeline switches used to start the engine: detection-only for the
+	/// boundary confirmation, full pipeline for recognition and the strict
+	/// scan text check.
+	ocr::OCRProcessConfig config{true, false, false};
 };
 
 namespace {
@@ -129,6 +134,115 @@ double TextSimilarity(std::string const& reference, std::string const& candidate
 	auto ref = localization::Normalize(reference, StrictMatchOptions());
 	auto cand = localization::Normalize(candidate, StrictMatchOptions());
 	return localization::Similarity(ref, cand);
+}
+
+/// Recognition lines below this confidence are treated as hallucination.
+/// Short-text readings that the model is unsure about consistently carry much
+/// lower confidence than the true subtitle, so filtering them here keeps
+/// garbage out of both the recognized text and the strict timeline check.
+constexpr double kMinOcrLineConfidence = 0.5;
+
+/// Drop recognition lines below the confidence floor and rebuild the text.
+/// Returns the input unchanged when the result is not ok.
+ocr::OCRResult FilterLowConfidence(ocr::OCRResult const& result) {
+	if (!result.ok)
+		return result;
+	ocr::OCRResult out = result;
+	out.lines.clear();
+	for (auto const& line : result.lines) {
+		if (line.confidence >= kMinOcrLineConfidence)
+			out.lines.push_back(line);
+	}
+	out.text = ocr::NormalizeText(out.lines, true);
+	return out;
+}
+
+/// Number of Unicode characters in a UTF-8 string.
+size_t Utf8CharCount(std::string const& text) {
+	size_t count = 0;
+	for (unsigned char c : text) {
+		if ((c & 0xC0) != 0x80)
+			++count;
+	}
+	return count;
+}
+
+/// Match decision for the strict timeline text check. Short phrases get a
+/// one-character tolerance: edit-distance similarity over a 2-4 character
+/// subtitle drops below the fixed 0.85 threshold on a single OCR error, which
+/// would silently veto the frame. One wrong character should move a boundary,
+/// not end the run.
+bool TextMatch(double sim, std::string const& reference) {
+	if (sim >= 0.85)
+		return true;
+	size_t chars = Utf8CharCount(localization::Normalize(reference, StrictMatchOptions()));
+	if (chars >= 2 && chars <= 4)
+		return sim >= (chars - 1.0) / chars;
+	return false;
+}
+
+/// Pick the consensus OCR text from several frames of the same subtitle.
+/// A longest-string contest rewards hallucinated readings (uncertain short
+/// texts tend to gain spurious characters), so group the normalized readings
+/// by similarity and choose the largest, most confident cluster instead.
+/// Within a cluster the longest reading is kept because it carries the full
+/// phrase, and all members agreed on it.
+std::string VoteBestText(std::vector<std::pair<std::string, double>> const& candidates) {
+	size_t n = candidates.size();
+	if (n == 0)
+		return {};
+	if (n == 1)
+		return candidates[0].first;
+
+	// Union-find over normalized similarity.
+	std::vector<size_t> parent(n);
+	std::iota(parent.begin(), parent.end(), size_t(0));
+	auto find = [&](size_t x) {
+		while (parent[x] != x) {
+			parent[x] = parent[parent[x]];
+			x = parent[x];
+		}
+		return x;
+	};
+	auto unite = [&](size_t a, size_t b) { parent[find(a)] = find(b); };
+
+	std::vector<std::string> normalized(n);
+	for (size_t i = 0; i < n; ++i)
+		normalized[i] = localization::Normalize(candidates[i].first, StrictMatchOptions());
+	for (size_t i = 0; i < n; ++i) {
+		if (normalized[i].empty())
+			continue;
+		for (size_t j = i + 1; j < n; ++j) {
+			if (!normalized[j].empty()
+			    && localization::Similarity(normalized[i], normalized[j]) >= 0.6)
+				unite(i, j);
+		}
+	}
+
+	std::map<size_t, std::vector<size_t>> clusters;
+	for (size_t i = 0; i < n; ++i)
+		clusters[find(i)].push_back(i);
+
+	double best_score = -1.0;
+	std::string best_text;
+	for (auto const& entry : clusters) {
+		double confidence = 0.0;
+		for (size_t idx : entry.second)
+			confidence += candidates[idx].second;
+		// Member count dominates; total confidence breaks ties, and a longer
+		// consensus text wins as the final tie-breaker.
+		double score = entry.second.size() * 1000.0 + confidence;
+		std::string cluster_text;
+		for (size_t idx : entry.second) {
+			if (candidates[idx].first.size() > cluster_text.size())
+				cluster_text = candidates[idx].first;
+		}
+		if (score > best_score || (score == best_score && cluster_text.size() > best_text.size())) {
+			best_score = score;
+			best_text = std::move(cluster_text);
+		}
+	}
+	return best_text;
 }
 
 /// Save the selected region of `frame` as a PNG and return its path. `margin`
@@ -301,7 +415,6 @@ bool RefineTimelineWithOcr(FrameDetector const& recognize,
 	if (localization::Normalize(reference_text, StrictMatchOptions()).empty())
 		return false;
 
-	constexpr double kMatchThreshold = 0.85;
 	constexpr int kSampleStep = 16;
 	constexpr int kMaxExtraEndFrames = 8; // how far past the pixel end a text match is still trusted
 	constexpr int kMaxStartProbe = 6;     // how far before the pixel start earlier matches are looked for
@@ -332,7 +445,7 @@ bool RefineTimelineWithOcr(FrameDetector const& recognize,
 		auto path = SaveRegionPng(loader, tpl, region_x, region_y, frame, 6, true, temp);
 		if (path.empty())
 			return -1.0;
-		auto res = recognize(path);
+		auto res = FilterLowConfidence(recognize(path));
 		agi::fs::Remove(path);
 		double sim = 0.0;
 		if (res.ok) {
@@ -344,7 +457,7 @@ bool RefineTimelineWithOcr(FrameDetector const& recognize,
 		sim_cache.emplace(frame, sim);
 		return sim;
 	};
-	auto is_match = [&](double sim) { return sim >= kMatchThreshold; };
+	auto is_match = [&](double sim) { return TextMatch(sim, reference_text); };
 
 	// ---- Forward pass: where does the text stop matching? ------------------
 	// Sweep the candidate run; the last matching sample anchors the end, then
@@ -458,6 +571,8 @@ DialogHardSubScan::DialogHardSubScan(agi::Context *context)
 	CreateControls();
 	UpdateControls();
 	ocr_warm_state_ = std::make_shared<OcrWarmState>();
+	ocr_full_state_ = std::make_shared<OcrWarmState>();
+	ocr_full_state_->config = ocr::OCRProcessConfig{true, true, true};
 	StartOcrWarmup();
 
 	persist = agi::make_unique<PersistLocation>(this, "Tool/HardSub");
@@ -480,6 +595,19 @@ DialogHardSubScan::~DialogHardSubScan() {
 		// The warmup task keeps the state alive if it is still starting; it
 		// will finish on its own and release the engine.
 		ocr_warm_state_.reset();
+	}
+	if (ocr_full_state_) {
+		// Let any in-flight shared-engine request observe the cancel and
+		// exit before stopping the engine it may be using.
+		{
+			std::lock_guard<std::mutex> run_lock(ocr_full_run_mutex_);
+			std::lock_guard<std::mutex> lock(ocr_full_state_->mutex);
+			if (ocr_full_state_->process)
+				ocr_full_state_->process->Stop();
+		}
+		// The warmup task keeps the state alive if it is still starting; it
+		// will finish on its own and release the engine.
+		ocr_full_state_.reset();
 	}
 }
 
@@ -615,6 +743,9 @@ void DialogHardSubScan::CreateControls() {
 	scan_button->Bind(wxEVT_BUTTON, &DialogHardSubScan::OnScan, this);
 	insert_button->Bind(wxEVT_BUTTON, &DialogHardSubScan::OnInsert, this);
 	copy_button->Bind(wxEVT_BUTTON, &DialogHardSubScan::OnCopy, this);
+	// Programmatic SetValue in OnRecognizeDone also fires this event, so the
+	// flag is reset there after the value is applied.
+	text_ctrl->Bind(wxEVT_TEXT, [this](wxCommandEvent&) { text_edited_ = true; });
 	Bind(EVT_HARDSUB_RECOGNIZE_DONE, &DialogHardSubScan::OnRecognizeDone, this);
 	Bind(EVT_HARDSUB_SCAN_PROGRESS, &DialogHardSubScan::OnScanProgress, this);
 	Bind(EVT_HARDSUB_SCAN_PIXEL_DONE, &DialogHardSubScan::OnScanPixelDone, this);
@@ -630,7 +761,12 @@ void DialogHardSubScan::UpdateControls() {
 	recognize_button->Enable(has_video && has_region && !scanning_);
 	text_ctrl->Enable(has_region);
 	scan_button->Enable(has_video && has_region && !scanning_);
-	insert_button->Enable(has_region && !scanning_ && scan_result_.ok);
+	// Inserting while recognition is still running or before it produced a
+	// result for the current region would insert the previous subtitle's
+	// text; a manually edited box is always fine.
+	insert_button->Enable(has_region && !scanning_ && scan_result_.ok
+	                      && !recognize_pending_
+	                      && (recognized_text_fresh_ || text_edited_));
 	copy_button->Enable(has_region && !scanning_ && scan_result_.ok);
 }
 
@@ -696,6 +832,11 @@ void DialogHardSubScan::OnClear(wxCommandEvent&) {
 }
 
 void DialogHardSubScan::ClearState() {
+	// Invalidate any in-flight recognition so its late result cannot be
+	// applied to the cleared dialog or satisfy the insert gate.
+	++recognize_generation_;
+	recognize_pending_ = false;
+	recognized_text_fresh_ = false;
 	region_ = wxRect();
 	base_frame_ = -1;
 	region_template_ = hardsub::RegionImage();
@@ -704,6 +845,9 @@ void DialogHardSubScan::ClearState() {
 	region_label->SetLabelText(_("No region selected"));
 	result_label->SetLabelText("");
 	text_ctrl->SetValue("");
+	// SetValue fires wxEVT_TEXT (marking the box as edited); the cleared box
+	// is not a manual edit.
+	text_edited_ = false;
 	progress->Hide();
 	Layout();
 }
@@ -735,61 +879,75 @@ void DialogHardSubScan::StartRecognize(int frame) {
 	int region_w = region_.GetWidth();
 	int region_h = region_.GetHeight();
 
+	agi::fs::path video_filename;
+	if (auto provider = c->project->VideoProvider())
+		video_filename = provider->GetFilename();
+
+	// Each region selection gets a new generation; a slow task from an older
+	// selection must never overwrite the text box or satisfy the insert gate.
+	++recognize_generation_;
+	recognize_pending_ = true;
+	recognized_text_fresh_ = false;
+	text_edited_ = false;
+	int generation = recognize_generation_;
+
 	SetStatus(_("Recognizing..."));
 	recognize_button->Enable(false);
 
 	auto handler = this;
-	agi::dispatch::Background().Async([handler, frames, frame, options, tpl,
-	                                   region_x, region_y, region_w, region_h]{
+	agi::dispatch::Background().Async([handler, frames, generation, options, tpl,
+	                                   region_x, region_y, region_w, region_h,
+	                                   video_filename]{
 		if (!handler->recognize_alive_.load())
 			return;
 
 		HardSubRecognizeOutcome outcome;
-		FrameDetector recognize;
-		ocr::OCRProcess process;
-		ocr::OCREngine fallback_engine;
-		std::string ocr_error;
-		agi::fs::path executable, models_dir, config_path;
+		outcome.generation = generation;
+
+		// The full-pipeline engine is pre-warmed with the dialog and shared
+		// with the strict scan, so recognition no longer pays the multi-second
+		// model load on every call.
+		FrameDetector recognize = [handler, &options](agi::fs::path const& image_path) {
+			return handler->RunFullOcr(image_path, options,
+				[handler] { return !handler->recognize_alive_.load(); });
+		};
+
+		wxString temp;
+		// Remove the shared temp PNG when this task returns, on any path.
+		struct TempPngGuard {
+			wxString &path;
+			explicit TempPngGuard(wxString &p) : path(p) {}
+			~TempPngGuard() {
+				if (!path.empty())
+					agi::fs::Remove(agi::fs::path(std::wstring(path.wc_str())));
+			}
+		} temp_guard(temp);
+
+		// Prefer the lightweight YUV scan decoder for the small crop window,
+		// which avoids the main provider's full-frame conversion on 4K video.
+		std::string decoder_error;
+		auto decoder = std::make_shared<hardsub::ScanVideoDecoder>(video_filename, decoder_error);
+		bool use_decoder = !video_filename.empty() && decoder->Valid();
+		auto loader = use_decoder
+			? hardsub::FrameLoader([decoder](int f) { return decoder->GetFrame(f); })
+			: hardsub::FrameLoader([handler](int f) {
+				return handler->c->videoController->GetFrame(f, true);
+			});
+
+		std::vector<std::pair<std::string, double>> candidates;
+		bool any_ok = false;
 		try {
-			if (ocr::OCRProcess::FindRuntime(executable, models_dir, config_path, ocr_error)
-			    && process.Start(executable, models_dir, config_path, ocr_error)) {
-				recognize = [&process, &options, handler](agi::fs::path const& image_path) {
-					return process.RunImage(image_path, options, false,
-						[handler] { return !handler->recognize_alive_.load(); });
-				};
-			}
-			else if (fallback_engine.GetDiagnostic(options).empty()) {
-				recognize = [&fallback_engine, options](agi::fs::path const& image_path) {
-					return fallback_engine.RecognizeImage(image_path, options);
-				};
-			}
-			else {
-				outcome.error = ocr_error.empty() ? from_wx(_("OCR runtime is unavailable.")) : ocr_error;
-			}
-		}
-		catch (...) {
-			outcome.error = from_wx(_("OCR runtime failed to start."));
-		}
-
-		if (recognize) {
-			wxString temp;
-			std::string best_text;
-			int best_length = -1;
-			double best_confidence = -1.0;
-			int best_dist = 0;
-			bool any_ok = false;
-
 			for (int f : frames) {
 				if (!handler->recognize_alive_.load())
 					break;
 
-				auto frame_data = handler->c->videoController->GetFrame(f, true);
+				auto frame_data = loader(f);
 				if (!frame_data)
 					continue;
 
 				// Only accept frames whose region still looks like the drawn
 				// subtitle; a neighboring subtitle could otherwise win the
-				// length contest on frames close to a cut.
+				// vote on frames close to a cut.
 				auto check = hardsub::CropRegion(*frame_data, region_x, region_y, region_w, region_h);
 				if (!check.Valid() || hardsub::RegionChangedRatio(tpl, check) > 0.35)
 					continue;
@@ -814,7 +972,10 @@ void DialogHardSubScan::StartRecognize(int frame) {
 				if (temp.empty() || !img.SaveFile(temp, wxBITMAP_TYPE_PNG))
 					continue;
 
-				auto result = recognize(agi::fs::path(std::wstring(temp.wc_str())));
+				// Low-confidence lines are hallucination-prone, especially on
+				// short phrases; drop them before the frame enters the vote.
+				auto result = FilterLowConfidence(
+					recognize(agi::fs::path(std::wstring(temp.wc_str()))));
 				if (result.ok)
 					any_ok = true;
 				else {
@@ -825,27 +986,23 @@ void DialogHardSubScan::StartRecognize(int frame) {
 				if (result.text.empty())
 					continue;
 
-				int length = NonSpaceLength(result.text);
-				double confidence = ConfidenceSum(result);
-				int dist = f > frame ? f - frame : frame - f;
-				if (length > best_length
-				    || (length == best_length && dist < best_dist)
-				    || (length == best_length && dist == best_dist && confidence > best_confidence)) {
-					best_length = length;
-					best_confidence = confidence;
-					best_dist = dist;
-					best_text = result.text;
-				}
+				double confidence = ConfidenceSum(result)
+					/ std::max(1, static_cast<int>(result.lines.size()));
+				candidates.emplace_back(result.text, confidence);
 			}
-
-			if (!temp.empty())
-				agi::fs::Remove(agi::fs::path(std::wstring(temp.wc_str())));
-
-			outcome.ok = any_ok;
-			outcome.text = best_text;
-			if (!any_ok && outcome.error.empty())
-				outcome.error = from_wx(_("No OCR result could be read for the region."));
 		}
+		catch (std::exception const& e) {
+			outcome.error = from_wx(agi::wxformat(
+				_("Hard subtitle recognition failed: %s"), e.what()));
+		}
+		catch (...) {
+			outcome.error = from_wx(_("Hard subtitle recognition failed with an unknown error."));
+		}
+
+		outcome.ok = any_ok;
+		outcome.text = VoteBestText(candidates);
+		if (!any_ok && outcome.error.empty())
+			outcome.error = from_wx(_("No OCR result could be read for the region."));
 
 		if (handler->recognize_alive_.load())
 			handler->AddPendingEvent(ValueEvent<HardSubRecognizeOutcome>(
@@ -855,8 +1012,16 @@ void DialogHardSubScan::StartRecognize(int frame) {
 
 void DialogHardSubScan::OnRecognizeDone(ValueEvent<HardSubRecognizeOutcome>& event) {
 	auto const& outcome = event.Get();
+	if (outcome.generation != recognize_generation_)
+		return; // stale result from an older region selection; ignore it
+
+	recognize_pending_ = false;
+	recognized_text_fresh_ = outcome.ok;
 	if (outcome.ok) {
 		text_ctrl->SetValue(to_wx(outcome.text));
+		// SetValue fires wxEVT_TEXT, which marks the box as edited; a fresh
+		// recognition result is not a manual edit, so clear the flag.
+		text_edited_ = false;
 		if (outcome.text.empty())
 			SetStatus(_("Recognition complete, but no text was found in the region."));
 		else
@@ -866,6 +1031,60 @@ void DialogHardSubScan::OnRecognizeDone(ValueEvent<HardSubRecognizeOutcome>& eve
 		SetStatus(outcome.error.empty() ? _("Recognition failed.") : to_wx(outcome.error));
 	}
 	UpdateControls();
+}
+
+std::shared_ptr<ocr::OCRProcess> DialogHardSubScan::GetFullOcrProcess(std::string& diagnostic) {
+	diagnostic.clear();
+	auto state = ocr_full_state_;
+	if (!state) {
+		diagnostic = from_wx(_("OCR runtime is unavailable."));
+		return {};
+	}
+	try {
+		std::lock_guard<std::mutex> lock(state->mutex);
+		if (state->process && state->process->IsRunning())
+			return state->process;
+
+		// The engine was never warmed or was stopped (a cancelled request or
+		// a timeout); (re)start it. This blocks for the model load, so callers
+		// should only do it off the UI thread.
+		state->ready = false;
+		auto process = std::make_shared<ocr::OCRProcess>();
+		agi::fs::path executable, models_dir, config_path;
+		if (!ocr::OCRProcess::FindRuntime(executable, models_dir, config_path, diagnostic)
+		    || !process->Start(executable, models_dir, config_path, diagnostic, state->config))
+			return {};
+		state->process = std::move(process);
+		state->ready = true;
+		return state->process;
+	}
+	catch (...) {
+		diagnostic = from_wx(_("OCR runtime failed to start."));
+		return {};
+	}
+}
+
+ocr::OCRResult DialogHardSubScan::RunFullOcr(agi::fs::path const& image_path,
+                                             ocr::OCROptions const& options,
+                                             std::function<bool()> const& cancel) {
+	// OCRProcess is not thread-safe: the region recognition task and the scan
+	// thread both use the shared engine, so every request is serialized.
+	std::lock_guard<std::mutex> lock(ocr_full_run_mutex_);
+	std::string diagnostic;
+	auto process = GetFullOcrProcess(diagnostic);
+	if (process)
+		return process->RunImage(image_path, options, false, cancel);
+
+	// The persistent runtime is only bundled on Windows builds; keep one-shot
+	// OCR working on other platforms.
+	if (diagnostic.find("only available on Windows") != std::string::npos) {
+		ocr::OCREngine engine;
+		if (engine.GetDiagnostic(options).empty())
+			return engine.RecognizeImage(image_path, options);
+	}
+	ocr::OCRResult result;
+	result.diagnostic = diagnostic;
+	return result;
 }
 
 void DialogHardSubScan::OnScan(wxCommandEvent&) {
@@ -902,6 +1121,16 @@ void DialogHardSubScan::OnScan(wxCommandEvent&) {
 	bool strict_ocr = strict_ocr_check->GetValue();
 	std::string reference_text = from_wx(text_ctrl->GetValue());
 	if (strict_ocr && reference_text.empty())
+		strict_ocr = false;
+	// A recognition may still be running at this point; remember it so the
+	// scan thread can refresh the reference text before the strict check.
+	bool recognize_was_pending = recognize_pending_;
+	int recognize_generation = recognize_generation_;
+	// If recognition already failed (or never ran) and the user has not typed
+	// anything, the box still holds an older region's text; the strict check
+	// must not compare frames against it.
+	if (strict_ocr && !recognize_was_pending
+	    && !recognized_text_fresh_ && !text_edited_)
 		strict_ocr = false;
 	std::vector<int> keyframes = c->project->VideoProvider()->GetKeyFrames();
 
@@ -940,7 +1169,8 @@ void DialogHardSubScan::OnScan(wxCommandEvent&) {
 
 	scan_thread_ = std::thread([handler, options, tpl, region_x, region_y, region_w, region_h,
 	                            base_frame, frame_count, confirm_with_ocr, strict_ocr,
-	                            reference_text, ocr_options, keyframes, video_filename]{
+	                            reference_text, recognize_was_pending, recognize_generation,
+	                            ocr_options, keyframes, video_filename]() mutable {
 		auto loader = [handler](int frame) -> std::shared_ptr<VideoFrame> {
 			if (handler->cancel_scan_.load())
 				return {};
@@ -984,28 +1214,6 @@ void DialogHardSubScan::OnScan(wxCommandEvent&) {
 				EVT_HARDSUB_SCAN_PROGRESS, -1, HardSubScanProgress{done, total}));
 		};
 
-		// The detection-only engine is pre-warmed by the dialog (model loading
-		// overlaps region selection and text editing); the strict pass needs
-		// recognized text, so it starts its own full-pipeline engine
-		// asynchronously and only when enabled.
-		auto start_full_process = []() -> std::shared_ptr<ocr::OCRProcess> {
-			try {
-				auto process = std::make_shared<ocr::OCRProcess>();
-				agi::fs::path executable, models_dir, config_path;
-				std::string diagnostic;
-				if (ocr::OCRProcess::FindRuntime(executable, models_dir, config_path, diagnostic)
-				    && process->Start(executable, models_dir, config_path, diagnostic))
-					return process;
-			}
-			catch (...) {
-			}
-			return {};
-		};
-
-		std::future<std::shared_ptr<ocr::OCRProcess>> strict_ready;
-		if (strict_ocr)
-			strict_ready = std::async(std::launch::async, start_full_process);
-
 		HardSubScanOutcome outcome;
 		try {
 			outcome.result = hardsub::ScanBoundaries(scan_tpl, region_x, region_y, base_frame,
@@ -1021,28 +1229,6 @@ void DialogHardSubScan::OnScan(wxCommandEvent&) {
 					: outcome.result.error;
 			}
 			else {
-				// Wait for the OCR engine(s) to finish loading while keeping
-				// the scan cancellable; a missing engine just disables the
-				// OCR phase and the pixel result stands.
-				std::shared_ptr<ocr::OCRProcess> full_process;
-				auto wait_for_process = [&](std::future<std::shared_ptr<ocr::OCRProcess>>& ready,
-				                            std::shared_ptr<ocr::OCRProcess>& out) {
-					if (!ready.valid() || cancel())
-						return;
-					for (int i = 0; i < 50; ++i) {
-						if (ready.wait_for(std::chrono::milliseconds(100))
-						    == std::future_status::ready)
-							break;
-						if (cancel())
-							return;
-					}
-					if (ready.wait_for(std::chrono::milliseconds(0))
-					    == std::future_status::ready) {
-						try { out = ready.get(); } catch (...) { }
-					}
-				};
-				wait_for_process(strict_ready, full_process);
-
 				// The pre-warmed detection-only engine: it has been loading
 				// since the dialog opened; wait briefly for it (the pixel
 				// scan above already gave it time), then proceed without OCR
@@ -1070,23 +1256,47 @@ void DialogHardSubScan::OnScan(wxCommandEvent&) {
 						return detect_process->RunImage(image_path, ocr_options, true, cancel);
 					};
 				}
-				if (strict_ocr && full_process) {
-					recognize = [&full_process, &ocr_options, &cancel](agi::fs::path const& image_path) {
-						return full_process->RunImage(image_path, ocr_options, false, cancel);
+				if (strict_ocr) {
+					// The strict text check shares the dialog's full-pipeline
+					// engine (warmed at open, restarted on demand), so it no
+					// longer waits for a per-scan model load.
+					recognize = [handler, &ocr_options, &cancel](agi::fs::path const& image_path) {
+						return handler->RunFullOcr(image_path, ocr_options, cancel);
 					};
 				}
-				else if (strict_ocr) {
-					// One-shot engine fallback for platforms where the
-					// persistent process is unavailable.
-					ocr::OCREngine fallback_engine;
-					if (fallback_engine.GetDiagnostic(ocr_options).empty()) {
-						recognize = [&fallback_engine, &ocr_options](agi::fs::path const& image_path) {
-							return fallback_engine.RecognizeImage(image_path, ocr_options);
-						};
+
+				// A recognition that was still running when the scan started
+				// may not have updated the text box yet; the strict check
+				// would otherwise compare every frame against stale text.
+				// Refresh the reference from the base frame with the shared
+				// engine and publish the result back into the text box.
+				if (strict_ocr && recognize_was_pending) {
+					wxString temp;
+					auto path = SaveRegionPng(scan_loader, scan_tpl, region_x, region_y,
+					                          base_frame, 6, true, temp);
+					bool refreshed = false;
+					if (!path.empty()) {
+						auto fresh = FilterLowConfidence(
+							handler->RunFullOcr(path, ocr_options, cancel));
+						agi::fs::Remove(path);
+						if (fresh.ok && !fresh.text.empty()) {
+							reference_text = fresh.text;
+							refreshed = true;
+							HardSubRecognizeOutcome o;
+							o.ok = true;
+							o.text = fresh.text;
+							o.generation = recognize_generation;
+							handler->AddPendingEvent(ValueEvent<HardSubRecognizeOutcome>(
+								EVT_HARDSUB_RECOGNIZE_DONE, -1, std::move(o)));
+						}
 					}
+					// No valid reference was available; keep the pixel result
+					// instead of comparing every frame against stale text.
+					if (!refreshed)
+						strict_ocr = false;
 				}
 
-				bool may_refine = detect || (strict_ocr && recognize);
+				bool may_refine = detect || strict_ocr;
 				if (!cancel() && may_refine) {
 					// Show the frame-precise pixel result immediately; the OCR
 					// verification below refines it and posts the final result.
@@ -1248,6 +1458,18 @@ void DialogHardSubScan::OnInsert(wxCommandEvent&) {
 	if (!scan_result_.ok || scan_start_ms_ >= scan_end_ms_)
 		return;
 
+	if (recognize_pending_) {
+		wxMessageBox(_("Text recognition is still running. Wait for it to finish before inserting."),
+		             _("Hard Subtitle"), wxOK | wxICON_INFORMATION | wxCENTER, this);
+		return;
+	}
+	if (!recognized_text_fresh_ && !text_edited_) {
+		wxMessageBox(_("The recognized text does not belong to the current region. "
+		               "Recognize the text again before inserting."),
+		             _("Hard Subtitle"), wxOK | wxICON_WARNING | wxCENTER, this);
+		return;
+	}
+
 	wxString text = text_ctrl->GetValue();
 	if (text.IsEmpty()) {
 		wxMessageBox(_("The recognized text is empty. Edit it before inserting."),
@@ -1310,31 +1532,37 @@ void DialogHardSubScan::CancelScan() {
 }
 
 void DialogHardSubScan::StartOcrWarmup() {
-	auto state = ocr_warm_state_;
-	if (!state)
-		return;
-
-	// Start the detection-only engine on the background dispatcher so model
-	// loading (a few seconds) happens while the user selects the region and
-	// edits the text, not on the scan critical path. The task captures the
+	// Start both engines on the background dispatcher so model loading (a few
+	// seconds) happens while the user selects the region and edits the text,
+	// not on the recognition or scan critical path. The task captures the
 	// shared state by value, never the dialog, so it is safe to close the
-	// dialog while the engine is still loading; dispatch also routes any
+	// dialog while an engine is still loading; dispatch also routes any
 	// exception to the crash handler instead of terminating the process.
-	agi::dispatch::Background().Async([state] {
-		try {
-			auto process = std::make_shared<ocr::OCRProcess>();
-			agi::fs::path executable, models_dir, config_path;
-			std::string diagnostic;
-			if (ocr::OCRProcess::FindRuntime(executable, models_dir, config_path, diagnostic)
-			    && process->Start(executable, models_dir, config_path, diagnostic,
-			                      ocr::OCRProcessConfig{true, false, false})) {
-				std::lock_guard<std::mutex> lock(state->mutex);
-				state->process = std::move(process);
-				state->ready = true;
+	auto start_one = [](std::shared_ptr<OcrWarmState> state) {
+		if (!state)
+			return;
+		agi::dispatch::Background().Async([state] {
+			try {
+				auto process = std::make_shared<ocr::OCRProcess>();
+				agi::fs::path executable, models_dir, config_path;
+				std::string diagnostic;
+				if (ocr::OCRProcess::FindRuntime(executable, models_dir, config_path, diagnostic)
+				    && process->Start(executable, models_dir, config_path, diagnostic,
+				                      state->config)) {
+					std::lock_guard<std::mutex> lock(state->mutex);
+					if (!state->process || !state->process->IsRunning())
+						state->process = std::move(process);
+					else
+						process->Stop(); // a caller already started the engine
+					state->ready = true;
+				}
 			}
-		}
-		catch (...) {
-			// OCR startup failure must never crash the app.
-		}
-	});
+			catch (...) {
+				// OCR startup failure must never crash the app.
+			}
+		});
+	};
+
+	start_one(ocr_warm_state_); // detection-only: boundary confirmation
+	start_one(ocr_full_state_); // full pipeline: recognition + strict check
 }

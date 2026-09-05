@@ -58,6 +58,7 @@ subprojects/.wraplock
 # Local run/test artifacts
 /data/
 /d3d_probe.obj
+/ffdump_probe.obj
 /[0-9][0-9][0-9][0-9]-*.json
 
 # Python bytecode caches (tools/tests/automation run from the source tree)

@@ -81,6 +81,7 @@
         { "command" : "tool/style/manager" },
         { "command" : "tool/style/assistant" },
         { "command" : "tool/translation_assistant" },
+        { "command" : "tool/hardsub_scan_video" },
         { "command" : "tool/resampleres" },
         {},
         { "submenu" : "main/subtitle/insert lines", "text" : "&Insert Lines" },

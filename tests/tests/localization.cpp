@@ -438,6 +438,33 @@ TEST(lagi_localization, MatchPrefersPreferredLanguage) {
 	EXPECT_EQ(results[0].file, "en.json");
 }
 
+TEST(lagi_localization, MatchPrefersWithoutSplitRegexText) {
+	EXPECT_TRUE(DefaultOptions().prefer_without_split_regex);
+
+	std::vector<LocalizationFile> files(2);
+	files[0].name = "en.json";
+	files[0].ok = true;
+	files[0].items.push_back({"K", "{TA7}Hello world.", "en.json"});
+	files[1].name = "zh.json";
+	files[1].ok = true;
+	files[1].items.push_back({"K", "{TA7}你好世界。", "zh.json"});
+
+	MatchOptions options = DefaultOptions();
+	options.preferred_language = "";
+	options.split_regex = "\\{[^}]*\\}";
+
+	// The segment cleaned by the split regex is preferred over raw entry text
+	// that still carries the {TA7} tag.
+	auto results = Match("Hello world.", files, options);
+	ASSERT_FALSE(results.empty());
+	EXPECT_EQ(results[0].replacement, "你好世界。");
+
+	options.prefer_without_split_regex = false;
+	results = Match("Hello world.", files, options);
+	ASSERT_FALSE(results.empty());
+	EXPECT_EQ(results[0].replacement, "{TA7}Hello world.");
+}
+
 TEST(lagi_localization, LoadBinaryRejected) {
 	auto file = LoadContent(std::string("abc\0def", 7), "bad.json", "json");
 	EXPECT_FALSE(file.ok);

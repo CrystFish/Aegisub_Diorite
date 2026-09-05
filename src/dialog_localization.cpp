@@ -118,6 +118,7 @@ struct DialogLocalization::Impl {
 	wxCheckBox *punct_check = nullptr;
 	wxCheckBox *case_check = nullptr;
 	wxCheckBox *sentence_check = nullptr;
+	wxCheckBox *clean_check = nullptr;
 	wxTextCtrl *regex_ctrl = nullptr;
 	wxComboBox *language_combo = nullptr;
 	wxSpinCtrlDouble *threshold_spin = nullptr;
@@ -163,29 +164,39 @@ DialogLocalization::Impl::Impl(DialogLocalization *dialog, agi::Context *c)
 	auto main_sizer = new wxBoxSizer(wxVERTICAL);
 
 	auto original_box = new wxStaticBoxSizer(wxVERTICAL, dialog, _("Current line"));
-	original_text = new wxTextCtrl(dialog, -1, "", wxDefaultPosition, wxSize(560, 70),
+	// ~25% narrower than the original 560 px so the dialog stays compact.
+	original_text = new wxTextCtrl(dialog, -1, "", wxDefaultPosition, wxSize(420, 70),
 		wxTE_MULTILINE | wxTE_READONLY);
 	original_box->Add(original_text, 1, wxEXPAND | wxALL, 4);
 	main_sizer->Add(original_box, 0, wxEXPAND | wxALL, 5);
 
 	auto options_box = new wxStaticBoxSizer(wxVERTICAL, dialog, _("Match options"));
-	auto options_sizer = new wxBoxSizer(wxHORIZONTAL);
+	// Row 1: boolean match toggles only, so the row is short enough for a
+	// narrower window than the original single wide options row.
 	fuzzy_check = new wxCheckBox(dialog, -1, _("Fuzzy match"));
 	tags_check = new wxCheckBox(dialog, -1, _("Ignore text tags"));
 	punct_check = new wxCheckBox(dialog, -1, _("Ignore punctuation"));
 	case_check = new wxCheckBox(dialog, -1, _("Ignore case"));
-	options_sizer->Add(fuzzy_check, 0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 8);
-	options_sizer->Add(tags_check, 0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 8);
-	options_sizer->Add(punct_check, 0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 8);
-	options_sizer->Add(case_check, 0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 8);
-	options_sizer->AddStretchSpacer();
-	options_sizer->Add(new wxStaticText(dialog, -1, _("Minimum similarity:")),
+	auto flags_row1 = new wxBoxSizer(wxHORIZONTAL);
+	flags_row1->Add(fuzzy_check, 0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 8);
+	flags_row1->Add(tags_check, 0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 8);
+	flags_row1->AddStretchSpacer();
+	options_box->Add(flags_row1, 0, wxEXPAND | wxALL, 4);
+	auto flags_row2 = new wxBoxSizer(wxHORIZONTAL);
+	flags_row2->Add(punct_check, 0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 8);
+	flags_row2->Add(case_check, 0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 8);
+	flags_row2->AddStretchSpacer();
+	options_box->Add(flags_row2, 0, wxEXPAND | wxALL, 4);
+
+	// Row 2: similarity threshold and preferred language.
+	auto scoring_sizer = new wxBoxSizer(wxHORIZONTAL);
+	scoring_sizer->Add(new wxStaticText(dialog, -1, _("Minimum similarity:")),
 		0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 4);
 	threshold_spin = new wxSpinCtrlDouble(dialog, -1, "", wxDefaultPosition, wxSize(70, -1),
 		wxSP_ARROW_KEYS, 0.5, 1.0, 0.7, 0.05);
-	options_sizer->Add(threshold_spin, 0, wxALIGN_CENTER_VERTICAL);
-	options_sizer->AddSpacer(12);
-	options_sizer->Add(new wxStaticText(dialog, -1, _("Preferred language:")),
+	scoring_sizer->Add(threshold_spin, 0, wxALIGN_CENTER_VERTICAL);
+	scoring_sizer->AddSpacer(12);
+	scoring_sizer->Add(new wxStaticText(dialog, -1, _("Preferred language:")),
 		0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 4);
 	language_combo = new wxComboBox(dialog, -1, "", wxDefaultPosition, wxSize(110, -1),
 		wxArrayString(), wxCB_READONLY);
@@ -194,19 +205,31 @@ DialogLocalization::Impl::Impl(DialogLocalization *dialog, agi::Context *c)
 	language_combo->Append(wxS("日本語"));
 	language_combo->Append(wxS("한국어"));
 	language_combo->Append(wxS("Русский"));
-	options_sizer->Add(language_combo, 0, wxALIGN_CENTER_VERTICAL);
-	options_box->Add(options_sizer, 0, wxEXPAND | wxALL, 4);
+	scoring_sizer->Add(language_combo, 0, wxALIGN_CENTER_VERTICAL);
+	scoring_sizer->AddStretchSpacer();
+	options_box->Add(scoring_sizer, 0, wxEXPAND | wxALL, 4);
 
+	// Row 3: sentence and regex splitting.
 	auto options_sizer2 = new wxBoxSizer(wxHORIZONTAL);
 	sentence_check = new wxCheckBox(dialog, -1, _("Split by sentences"));
 	sentence_check->SetToolTip(_("Split segments at sentence endings (。.!?…). Turn this off to keep whole entries as single segments."));
-	regex_ctrl = new wxTextCtrl(dialog, -1, "", wxDefaultPosition, wxSize(240, -1));
+	regex_ctrl = new wxTextCtrl(dialog, -1, "", wxDefaultPosition, wxDefaultSize);
 	regex_ctrl->SetToolTip(_("Split segments wherever this regular expression matches; the matched text is removed. For example, use \\{[^}]*\\} to break at text tags such as {*1} or {TA7}. Invalid patterns are ignored."));
 	options_sizer2->Add(sentence_check, 0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 12);
 	options_sizer2->Add(new wxStaticText(dialog, -1, _("Split regex:")),
 		0, wxRIGHT | wxALIGN_CENTER_VERTICAL, 4);
 	options_sizer2->Add(regex_ctrl, 1, wxALIGN_CENTER_VERTICAL);
 	options_box->Add(options_sizer2, 0, wxEXPAND | wxALL, 4);
+
+	// Row 4: clean result preference (only has an effect while a split regex
+	// is configured).
+	clean_check = new wxCheckBox(dialog, -1,
+		_("Prefer results without split-regex text"));
+	clean_check->SetToolTip(_(
+		"When a split regex is set, list results whose localized text contains "
+		"no match of that regex first, so cleaned segments are preferred over "
+		"results that still carry the unsplit tag text."));
+	options_box->Add(clean_check, 0, wxLEFT | wxRIGHT | wxBOTTOM, 4);
 	main_sizer->Add(options_box, 0, wxEXPAND | wxLEFT | wxRIGHT, 5);
 
 	auto files_box_sizer = new wxStaticBoxSizer(wxVERTICAL, dialog, _("Localization files"));
@@ -225,11 +248,14 @@ DialogLocalization::Impl::Impl(DialogLocalization *dialog, agi::Context *c)
 	auto results_box = new wxStaticBoxSizer(wxVERTICAL, dialog, _("Results"));
 	results_list = new wxListCtrl(dialog, -1, wxDefaultPosition, wxSize(-1, 200),
 		wxLC_REPORT | wxLC_SINGLE_SEL);
-	results_list->InsertColumn(0, _("Match"), wxLIST_FORMAT_RIGHT, 60);
-	results_list->InsertColumn(1, _("Source"), wxLIST_FORMAT_LEFT, 150);
-	results_list->InsertColumn(2, _("Matched text"), wxLIST_FORMAT_LEFT, 180);
-	results_list->InsertColumn(3, _("Localized text"), wxLIST_FORMAT_LEFT, 220);
-	results_list->InsertColumn(4, _("Origin"), wxLIST_FORMAT_LEFT, 200);
+	// Column widths are ~25% smaller than the original 60/150/180/220/200 so
+	// the whole table (and therefore the dialog) does not need a wide window.
+	results_list->InsertColumn(0, _("Match"), wxLIST_FORMAT_RIGHT, 50);
+	results_list->InsertColumn(1, _("Source"), wxLIST_FORMAT_LEFT, 110);
+	results_list->InsertColumn(2, _("Matched text"), wxLIST_FORMAT_LEFT, 135);
+	results_list->InsertColumn(3, _("Localized text"), wxLIST_FORMAT_LEFT, 165);
+	results_list->InsertColumn(4, _("Origin"), wxLIST_FORMAT_LEFT, 150);
+	results_list->SetMinSize(wxSize(430, 200));
 	results_box->Add(results_list, 1, wxEXPAND | wxALL, 4);
 	main_sizer->Add(results_box, 1, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 5);
 
@@ -247,7 +273,17 @@ DialogLocalization::Impl::Impl(DialogLocalization *dialog, agi::Context *c)
 	main_sizer->Add(button_sizer, 0, wxEXPAND | wxALL, 5);
 
 	dialog->SetSizerAndFit(main_sizer);
-	dialog->SetMinSize(dialog->GetSize());
+	dialog->Layout();
+	// The options are laid out on short rows now, so the fitted size is
+	// already well below the original one-row layout. Cap it at a compact
+	// width and keep the minimum below that so the user can still drag the
+	// window narrower by hand.
+	const int fit_width = dialog->GetSize().GetWidth();
+	const int fit_height = dialog->GetSize().GetHeight();
+	const int compact_width = std::min(fit_width, 640);
+	const int min_width = std::max(420, compact_width - 140);
+	dialog->SetSize(compact_width, fit_height);
+	dialog->SetMinSize(wxSize(min_width, fit_height));
 	dialog->CenterOnParent();
 
 	persist = agi::make_unique<PersistLocation>(dialog, "Tool/Localization");
@@ -260,6 +296,7 @@ DialogLocalization::Impl::Impl(DialogLocalization *dialog, agi::Context *c)
 	language_combo->SetValue(to_wx(OPT_GET("Tool/Localization/Language")->GetString()));
 	sentence_check->SetValue(OPT_GET("Tool/Localization/Split Sentences")->GetBool());
 	regex_ctrl->SetValue(to_wx(OPT_GET("Tool/Localization/Split Regex")->GetString()));
+	clean_check->SetValue(OPT_GET("Tool/Localization/Prefer Without Split Regex")->GetBool());
 
 	add_button->Bind(wxEVT_BUTTON, &Impl::OnAddFiles, this);
 	remove_button->Bind(wxEVT_BUTTON, &Impl::OnRemoveFile, this);
@@ -275,6 +312,7 @@ DialogLocalization::Impl::Impl(DialogLocalization *dialog, agi::Context *c)
 	language_combo->Bind(wxEVT_COMBOBOX, &Impl::OnOptionsChanged, this);
 	sentence_check->Bind(wxEVT_CHECKBOX, &Impl::OnOptionsChanged, this);
 	regex_ctrl->Bind(wxEVT_TEXT, &Impl::OnOptionsChanged, this);
+	clean_check->Bind(wxEVT_CHECKBOX, &Impl::OnOptionsChanged, this);
 	results_list->Bind(wxEVT_LIST_ITEM_ACTIVATED, &Impl::OnListActivated, this);
 
 	LoadPersistedFiles();
@@ -292,6 +330,7 @@ localization::MatchOptions DialogLocalization::Impl::CurrentOptions() const {
 	options.preferred_language = from_wx(language_combo->GetValue());
 	options.split_sentences = sentence_check->GetValue();
 	options.split_regex = from_wx(regex_ctrl->GetValue());
+	options.prefer_without_split_regex = clean_check->GetValue();
 	return options;
 }
 
@@ -304,6 +343,7 @@ void DialogLocalization::Impl::SaveOptions() {
 	OPT_SET("Tool/Localization/Language")->SetString(from_wx(language_combo->GetValue()));
 	OPT_SET("Tool/Localization/Split Sentences")->SetBool(sentence_check->GetValue());
 	OPT_SET("Tool/Localization/Split Regex")->SetString(from_wx(regex_ctrl->GetValue()));
+	OPT_SET("Tool/Localization/Prefer Without Split Regex")->SetBool(clean_check->GetValue());
 
 	std::string joined;
 	for (auto const& path : paths) {

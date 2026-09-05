@@ -32,6 +32,7 @@
 #include "command.h"
 
 #include "../compat.h"
+#include "../dialog_hardsub_scan_video.h"
 #include "../dialog_localization.h"
 #include "../dialog_manager.h"
 #include "../dialog_styling_assistant.h"
@@ -121,6 +122,20 @@ struct tool_ocr_validator : public Command {
 
 	bool Validate(const agi::Context *c) override {
 		return c->videoDisplay && c->project->VideoProvider() && ocr::OCREngine::IsRuntimeAvailable();
+	}
+};
+
+struct tool_hardsub_scan_video final : public tool_ocr_validator {
+	CMD_NAME("tool/hardsub_scan_video")
+	STR_MENU("Hard Subtitle Scan (Whole Video)...")
+	STR_DISP("Hard Subtitle Scan (Whole Video)")
+	STR_HELP("Scan the whole video for burned-in subtitles in a region and extract their times and text")
+
+	void operator()(agi::Context *c) override {
+		if (Validate(c)) {
+			c->videoController->Stop();
+			c->dialog->Show<DialogHardSubScanVideo>(c);
+		}
 	}
 };
 
@@ -333,6 +348,7 @@ namespace cmd {
 		reg(agi::make_unique<tool_font_collector>());
 		reg(agi::make_unique<tool_line_select>());
 		reg(agi::make_unique<tool_localization>());
+		reg(agi::make_unique<tool_hardsub_scan_video>());
 		reg(agi::make_unique<tool_ocr_image_to_text>());
 		reg(agi::make_unique<tool_ocr_detect_regions>());
 		reg(agi::make_unique<tool_resampleres>());

@@ -533,6 +533,25 @@
 			"Strict OCR Check" : false,
 			"Threshold" : 40
 		},
+		"HardSubScanVideo" : {
+			"Center Band" : 10,
+			"Center Only" : true,
+			"Detect Every" : 16,
+			"Last" : {
+				"X" : -1,
+				"Y" : -1,
+				"Width" : -1,
+				"Height" : -1
+			},
+			"Maximized" : false,
+			"Merge Same Interval" : true,
+			"Min Duration Frames" : 12,
+			"Replace Newlines" : true,
+			"Region X" : -1,
+			"Region Y" : -1,
+			"Region W" : -1,
+			"Region H" : -1
+		},
 		"Localization" : {
 			"Files" : "",
 			"Fuzzy" : true,
@@ -540,6 +559,7 @@
 			"Ignore Punctuation" : true,
 			"Ignore Tags" : true,
 			"Language" : "中文",
+			"Prefer Without Split Regex" : true,
 			"Split Sentences" : true,
 			"Split Regex" : "",
 			"Last" : {

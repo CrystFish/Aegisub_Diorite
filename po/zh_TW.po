@@ -7406,6 +7406,190 @@ msgstr "文字識別仍在進行中，請等待完成後再插入。"
 msgid "The recognized text does not belong to the current region. Recognize the text again before inserting."
 msgstr "識別出的文字不屬於當前區域，請重新識別後再插入。"
 
+#: ../src/dialog_hardsub_scan_video.cpp ../src/command/tool.cpp
+msgid "Hard Subtitle Scan (Whole Video)"
+msgstr "硬字幕掃描（全片）"
+
+#: ../src/command/tool.cpp
+msgid "Hard Subtitle Scan (Whole Video)..."
+msgstr "硬字幕掃描（全片）…"
+
+#: ../src/command/tool.cpp
+msgid "Scan the whole video for burned-in subtitles in a region and extract their times and text"
+msgstr "掃描整個視訊中某一區域內的硬字幕，並擷取其時間與文字"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Region: %d,%d %dx%d"
+msgstr "區域：%d,%d %dx%d"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Scan Region"
+msgstr "掃描區域"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Select Region on Video"
+msgstr "在影片上選擇區域"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Region Size"
+msgstr "區域大小"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Coordinate (px)"
+msgstr "座標（像素）"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Margin (%)"
+msgstr "邊距（%）"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Top"
+msgstr "上邊距"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Bottom"
+msgstr "下邊距"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Only centered subtitles"
+msgstr "僅置中字幕"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Center band (%)"
+msgstr "置中範圍（%）"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Rows whose horizontal center lies inside the middle this many percent of the region are kept; 100 disables the filter."
+msgstr "僅保留水平中心位於區域中部該百分比範圍內的行；設為 100 可關閉此篩選。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Min duration (frames)"
+msgstr "最短時長（幀）"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "OCR every (frames)"
+msgstr "OCR 取樣間隔（幀）"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Minimum gap between OCR samples while the region is stable. Smaller values are more accurate but slower."
+msgstr "區域穩定時兩次 OCR 取樣的最小間隔。數值越小越精確，但速度越慢。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Merge rows with identical start/end into one line"
+msgstr "合併起止完全相同的多行到同一行"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Replace line breaks with spaces"
+msgstr "將換行符替換為空格"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Turn the in-text line breaks (\\N) produced for multi-line OCR rows into a single space. Leave off to keep the subtitles on multiple lines."
+msgstr "將多行 OCR 行產生的文字換行符（\\N）替換為單一空格。關閉可保留多行字幕。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Scan Whole Video"
+msgstr "掃描全片"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Frames"
+msgstr "幀數"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Conf"
+msgstr "置信度"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Copy Text"
+msgstr "複製文字"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Insert Lines"
+msgstr "插入行"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Export .ass"
+msgstr "匯出 .ass"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Select a scan region on the video first."
+msgstr "請先在影片上選擇掃描區域。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Drag a rectangle over the subtitle area on the video."
+msgstr "請在影片字幕區域上拖出一個矩形。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Region set."
+msgstr "區域已設定。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Scanning..."
+msgstr "正在掃描…"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Scan cancelled."
+msgstr "掃描已取消。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Scan complete: %d lines detected."
+msgstr "掃描完成：偵測到 %d 行。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Copied to clipboard."
+msgstr "已複製到剪貼簿。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Inserted %d lines."
+msgstr "已插入 %d 行。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Export subtitle (.ass)"
+msgstr "匯出字幕（.ass）"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "ASS subtitles (*.ass)|*.ass"
+msgstr "ASS 字幕（*.ass）|*.ass"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Exported .ass file."
+msgstr "已匯出 .ass 檔案。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Result list cleared."
+msgstr "結果清單已清空。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Could not write the export file."
+msgstr "無法寫入匯出檔案。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "The scan was interrupted by an internal error (0x%08X)."
+msgstr "掃描因內部錯誤而中斷（0x%08X）。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Hard subtitle scan failed: %s"
+msgstr "硬字幕掃描失敗：%s"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Hard subtitle scan failed with an unknown error."
+msgstr "硬字幕掃描因未知錯誤而失敗。"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "Frame %d / %d (%d%%)  |  elapsed "
+msgstr "幀 %d / %d（%d%%）  |  已用時 "
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "  |  ETA "
+msgstr "  |  預計剩餘 "
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "  |  OCR %d"
+msgstr "  |  OCR %d"
+
+#: ../src/dialog_hardsub_scan_video.cpp
+msgid "insert hard subtitle lines"
+msgstr "插入硬字幕行"
+
 #~ msgid "    Subtitle format handler: %s"
 #~ msgstr "    字幕格式處理器： %s"
 

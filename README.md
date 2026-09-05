@@ -1,6 +1,6 @@
-# aegisub toshi-ban v2.0
+# Aegisub Diorite
 
-English [မြန်မာ](https://github.com/amanosatosi/Aegisub_Toshi-ban/blob/main/Readme-MM.md)
+一个基于 [aegisub toshi-ban](https://github.com/amanosatosi/Aegisub_Toshi-ban) 的、方便直接在字幕中插入本地化文本的改版
 
 > *vibe-coded out of necessity*
 

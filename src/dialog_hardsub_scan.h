@@ -17,10 +17,13 @@
 #include "hardsub_scan.h"
 #include "value_event.h"
 
+#include <libaegisub/fs_fwd.h>
 #include <libaegisub/signal.h>
 
 #include <atomic>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -36,11 +39,15 @@ class wxTextCtrl;
 class PersistLocation;
 struct OcrWarmState;
 namespace agi { struct Context; }
+namespace ocr { struct OCROptions; struct OCRResult; class OCRProcess; }
 
 struct HardSubRecognizeOutcome {
 	bool ok = false;
 	std::string text;
 	std::string error;
+	/// Recognition generation this result belongs to; stale results from an
+	/// older region selection are ignored by the dialog.
+	int generation = 0;
 };
 
 struct HardSubScanProgress {
@@ -100,6 +107,26 @@ class DialogHardSubScan final : public wxDialog {
 	/// background while the dialog is open. Owned by a shared_ptr so the
 	/// warmup task can outlive the dialog safely (no joins, no dangling).
 	std::shared_ptr<OcrWarmState> ocr_warm_state_;
+	/// Shared state for the full-pipeline (det+rec+cls) OCR engine, used by
+	/// both region recognition and the strict scan text check so the model
+	/// is loaded only once per dialog lifetime.
+	std::shared_ptr<OcrWarmState> ocr_full_state_;
+	/// Serializes requests to the shared full-pipeline engine. OCRProcess is
+	/// not thread-safe, and the region recognition task and the scan thread
+	/// both call into it.
+	std::mutex ocr_full_run_mutex_;
+	/// Monotonic recognition generation. Bumped on every StartRecognize and
+	/// on ClearState so results posted by older tasks are ignored.
+	int recognize_generation_ = 0;
+	/// True while a recognition for the current region is still running.
+	bool recognize_pending_ = false;
+	/// True once the latest generation's recognition completed (successfully
+	/// or not), i.e. the text box no longer holds an older region's text.
+	bool recognized_text_fresh_ = false;
+	/// True once the user manually edited the text box for the current
+	/// region; lets a hand-typed line be inserted even when OCR produced no
+	/// result, while leftover text from an older region stays blocked.
+	bool text_edited_ = false;
 	/// Playback was running when the scan started; resume it when the scan
 	/// finishes so the video worker is not contended during the scan.
 	bool resume_playback_ = false;
@@ -130,6 +157,17 @@ class DialogHardSubScan final : public wxDialog {
 	void OnScanProgress(ValueEvent<HardSubScanProgress>& event);
 	void OnScanPixelDone(ValueEvent<HardSubScanOutcome>& event);
 	void OnScanDone(ValueEvent<HardSubScanOutcome>& event);
+
+	/// Return the dialog's full-pipeline OCR engine, (re)starting it when it
+	/// is not running. Blocks while the model loads; fills diagnostic on
+	/// failure.
+	std::shared_ptr<ocr::OCRProcess> GetFullOcrProcess(std::string& diagnostic);
+	/// Run one image through the shared full-pipeline engine, serialized
+	/// against concurrent callers. Falls back to the one-shot engine on
+	/// platforms without the persistent runtime.
+	ocr::OCRResult RunFullOcr(agi::fs::path const& image_path,
+	                          ocr::OCROptions const& options,
+	                          std::function<bool()> const& cancel);
 
 public:
 	DialogHardSubScan(agi::Context *context);

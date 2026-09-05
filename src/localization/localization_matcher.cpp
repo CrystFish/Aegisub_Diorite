@@ -736,6 +736,13 @@ std::vector<MatchResult> Match(std::string const& subtitle_text,
 			}
 			if (a.exact != b.exact) return a.exact;
 			if (a.score != b.score) return a.score > b.score;
+			// Prefer results whose localized text no longer contains text the
+			// split regex would remove (e.g. unsplit {TA7} tags).
+			if (options.prefer_without_split_regex && split_regex) {
+				bool a_clean = !std::regex_search(a.replacement, *split_regex);
+				bool b_clean = !std::regex_search(b.replacement, *split_regex);
+				if (a_clean != b_clean) return a_clean;
+			}
 			if (a.from_key != b.from_key) return !a.from_key;
 			if (a.file != b.file) return a.file < b.file;
 			if (a.key != b.key) return a.key < b.key;

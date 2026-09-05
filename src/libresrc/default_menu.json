@@ -80,6 +80,7 @@
         { "command" : "tool/style/assistant" },
         { "command" : "tool/translation_assistant" },
         { "command" : "tool/localization" },
+        { "command" : "tool/hardsub_scan_video" },
         { "command" : "tool/resampleres" },
         { "command" : "subtitle/spellcheck" },
         {},

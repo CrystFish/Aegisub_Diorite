@@ -62,6 +62,11 @@ struct MatchOptions {
 	/// Optional regular expression: every match becomes a segment boundary
 	/// and the matched text is removed. Empty disables regex splitting.
 	std::string split_regex;
+	/// When a split regex is configured, results whose replacement text
+	/// contains no match of the regex are ranked first. Clean segments are
+	/// usually the intended insertion text, while results that still contain
+	/// the regex text (e.g. unsplit {TA7} tags) are less desirable.
+	bool prefer_without_split_regex = true;
 	/// Results whose file language matches this value are sorted first.
 	/// Empty disables the preference.
 	std::string preferred_language = "中文";
