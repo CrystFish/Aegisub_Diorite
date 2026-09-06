@@ -106,7 +106,7 @@ msgstr "Aegisub"
 #: ../packages/desktop/aegisub.appdata.xml.in.in:7
 msgid ""
 "A free, cross-platform open source tool for creating and modifying subtitles"
-msgstr ""
+msgstr "免费、跨平台的开源字幕创建与编辑工具"
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:9
 msgid ""
@@ -115,6 +115,8 @@ msgid ""
 "audio, and features many powerful tools for styling them, including a built-"
 "in real-time video preview."
 msgstr ""
+"Aegisub 是一款免费、跨平台的开源字幕创建和编辑工具。Aegisub "
+"让字幕对齐音频变得快速而简单，并提供许多强大的字幕样式工具，包括内置的实时视频预览。"
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:10
 msgid ""
@@ -126,6 +128,9 @@ msgid ""
 "unrelated to Aegisub) many vital functions, or were too buggy and/or "
 "unreliable to be really useful."
 msgstr ""
+"Aegisub 最初是为了让排版（尤其是动漫字幕组的排版）不再那么痛苦而创建的工具。项目起步时，许多支持高级 "
+"SubStation Alpha 格式的程序缺少（而且在很多情况下至今仍缺少；此后几个竞争程序也因各种与 "
+"Aegisub 完全无关的原因停止了开发）许多关键功能，或者错误太多和/或不够可靠，难以真正使用。"
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:11
 msgid ""
@@ -136,50 +141,55 @@ msgid ""
 "for creating karaoke effects, Automation can now be used much else, "
 "including creating macros and various other convenient tools)."
 msgstr ""
+"此后，Aegisub "
+"已发展为一款功能完备、高度可定制的字幕编辑器。它拥有许多便捷工具，可帮助您完成字幕的时间轴、排版、编辑和翻译，还提供"
+"名为 "
+"Automation（自动化）的强大脚本环境（最初主要用于制作卡拉OK特效，如今自动化还可用于创建宏及各种其他便捷工"
+"具）。"
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:12
 msgid "Some highlights of Aegisub:"
-msgstr ""
+msgstr "Aegisub 的主要亮点："
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:14
 msgid "Simple and intuitive yet powerful interface for editing subtitles"
-msgstr ""
+msgstr "简单直观而又功能强大的字幕编辑界面"
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:15
 msgid "Support for many formats and character sets"
-msgstr ""
+msgstr "支持多种格式和字符编码"
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:16
 msgid "Powerful video mode"
-msgstr ""
+msgstr "强大的视频模式"
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:17
 msgid "Visual typesetting tools"
-msgstr ""
+msgstr "可视化排版工具"
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:18
 msgid "Intuitive and customizable audio timing mode"
-msgstr ""
+msgstr "直观且可定制的音频时间轴模式"
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:19
 msgid "Fully scriptable through the Automation module"
-msgstr ""
+msgstr "可通过 Automation 模块全面编写脚本"
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:32
 msgid "Typesetting"
-msgstr ""
+msgstr "排版"
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:36
 msgid "Audio video"
-msgstr ""
+msgstr "音频与视频"
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:40
 msgid "Audio timing"
-msgstr ""
+msgstr "音频时间轴"
 
 #: ../packages/desktop/aegisub.appdata.xml.in.in:44
 msgid "Aegisub Group"
-msgstr ""
+msgstr "Aegisub 团队"
 
 #: ../packages/desktop/aegisub.desktop.in.in:6
 msgid "Subtitle Editor"
@@ -191,7 +201,7 @@ msgstr "为电影和视频创建和编辑字幕。"
 
 #: ../packages/desktop/aegisub.desktop.in.in:13
 msgid "subtitles;subtitle;captions;captioning;video;audio;"
-msgstr ""
+msgstr "字幕;字幕;字幕说明;字幕说明;视频;音频;"
 
 #: ../src/ass_style.cpp:195
 msgid "ANSI"
@@ -322,7 +332,7 @@ msgstr "索引"
 #: ../src/audio_provider_bestsource.cpp:60
 #: ../src/video_provider_bestsource.cpp:119
 msgid "Creating cache... This can take a while!"
-msgstr ""
+msgstr "正在创建缓存…这可能需要一些时间！"
 
 #: ../src/audio_renderer_waveform.cpp:152
 msgid "Maximum"
@@ -539,27 +549,27 @@ msgstr "检查是否有可用的新版Aegisub"
 
 #: ../src/command/app.cpp:271 ../src/command/app.cpp:272
 msgid "Minimize"
-msgstr ""
+msgstr "最小化"
 
 #: ../src/command/app.cpp:273
 msgid "Minimize the active window"
-msgstr ""
+msgstr "最小化当前窗口"
 
 #: ../src/command/app.cpp:282 ../src/command/app.cpp:283
 msgid "Zoom"
-msgstr ""
+msgstr "缩放"
 
 #: ../src/command/app.cpp:284
 msgid "Maximize the active window"
-msgstr ""
+msgstr "最大化当前窗口"
 
 #: ../src/command/app.cpp:293 ../src/command/app.cpp:294
 msgid "Bring All to Front"
-msgstr ""
+msgstr "全部置于最前"
 
 #: ../src/command/app.cpp:295
 msgid "Bring forward all open documents to the front"
-msgstr ""
+msgstr "将所有打开的文档置于最前"
 
 #: ../src/command/audio.cpp:66
 msgid "&Close Audio"
@@ -623,11 +633,11 @@ msgstr "从当前视频文件中打开音频"
 
 #: ../src/command/audio.cpp:133 ../src/command/audio.cpp:134
 msgid "Reload Audio"
-msgstr ""
+msgstr "重新载入音频"
 
 #: ../src/command/audio.cpp:135
 msgid "Reload the current audio file"
-msgstr ""
+msgstr "重新载入当前音频文件"
 
 #: ../src/command/audio.cpp:144
 msgid "&Spectrum Display"
@@ -1472,7 +1482,7 @@ msgstr "按照样式名称排序所选字幕"
 
 #: ../src/command/grid.cpp:254 ../src/command/grid.cpp:266
 msgid "Te&xt"
-msgstr ""
+msgstr "文本(&X)"
 
 #: ../src/command/grid.cpp:255 ../src/command/grid.cpp:267
 #: ../src/dialog_kara_timing_copy.cpp:475 ../src/dialog_paste_over.cpp:73
@@ -1482,27 +1492,27 @@ msgstr "文本"
 
 #: ../src/command/grid.cpp:256
 msgid "Sort all subtitles by their text, including styling tags"
-msgstr ""
+msgstr "按所有字幕的文本（包括样式标签）排序"
 
 #: ../src/command/grid.cpp:268
 msgid "Sort selected subtitles by their text, including styling tags"
-msgstr ""
+msgstr "按所选字幕的文本（包括样式标签）排序"
 
 #: ../src/command/grid.cpp:278 ../src/command/grid.cpp:290
 msgid "Stri&pped Text"
-msgstr ""
+msgstr "纯文本(&P)"
 
 #: ../src/command/grid.cpp:279 ../src/command/grid.cpp:291
 msgid "Stripped Text"
-msgstr ""
+msgstr "纯文本"
 
 #: ../src/command/grid.cpp:280
 msgid "Sort all subtitles by their stripped text"
-msgstr ""
+msgstr "按所有字幕去除样式标签后的文本排序"
 
 #: ../src/command/grid.cpp:292
 msgid "Sort selected subtitles by their stripped text"
-msgstr ""
+msgstr "按所选字幕去除样式标签后的文本排序"
 
 #: ../src/command/grid.cpp:303 ../src/command/grid.cpp:304
 msgid "Cycle Tag Hiding Mode"
@@ -1595,61 +1605,61 @@ msgstr "互换行"
 
 #: ../src/command/grid.cpp:452 ../src/command/grid.cpp:453
 msgid "Create new Fold"
-msgstr ""
+msgstr "新建折叠组"
 
 #: ../src/command/grid.cpp:454
 msgid "Create a new fold collapsing the selected lines into a group"
-msgstr ""
+msgstr "新建折叠组，将所选行合并为一组"
 
 #: ../src/command/grid.cpp:472 ../src/command/grid.cpp:473
 msgid "Open Folds"
-msgstr ""
+msgstr "展开折叠组"
 
 #: ../src/command/grid.cpp:474
 msgid "Expand the folds under the selected lines"
-msgstr ""
+msgstr "展开所选行下方的折叠组"
 
 #: ../src/command/grid.cpp:488 ../src/command/grid.cpp:489
 msgid "Close Folds"
-msgstr ""
+msgstr "收起折叠组"
 
 #: ../src/command/grid.cpp:490
 msgid "Collapse the folds around the selected lines"
-msgstr ""
+msgstr "收起所选行周围的折叠组"
 
 #: ../src/command/grid.cpp:504 ../src/command/grid.cpp:505
 msgid "Clear Folds"
-msgstr ""
+msgstr "清除折叠组"
 
 #: ../src/command/grid.cpp:506
 msgid "Remove the folds around the selected lines"
-msgstr ""
+msgstr "移除所选行周围的折叠组"
 
 #: ../src/command/grid.cpp:520 ../src/command/grid.cpp:521
 msgid "Toggle Folds"
-msgstr ""
+msgstr "切换折叠组"
 
 #: ../src/command/grid.cpp:522
 msgid "Open or close the folds around the selected lines"
-msgstr ""
+msgstr "展开或收起所选行周围的折叠组"
 
 #: ../src/command/grid.cpp:536 ../src/command/grid.cpp:537
 #: ../src/command/grid.cpp:538
 msgid "Open all Folds"
-msgstr ""
+msgstr "展开所有折叠组"
 
 #: ../src/command/grid.cpp:547 ../src/command/grid.cpp:548
 #: ../src/command/grid.cpp:549
 msgid "Close all Folds"
-msgstr ""
+msgstr "收起所有折叠组"
 
 #: ../src/command/grid.cpp:558 ../src/command/grid.cpp:559
 msgid "Clear all Folds"
-msgstr ""
+msgstr "清除所有折叠组"
 
 #: ../src/command/grid.cpp:560
 msgid "Remove all Folds"
-msgstr ""
+msgstr "移除所有折叠组"
 
 #: ../src/command/help.cpp:48
 msgid "&Bug Tracker..."
@@ -2102,11 +2112,11 @@ msgstr "紧贴镜头"
 
 #: ../src/command/time.cpp:241 ../src/command/time.cpp:242
 msgid "Align subtitle to video"
-msgstr ""
+msgstr "将字幕对齐到视频"
 
 #: ../src/command/time.cpp:243
 msgid "Align subtitle to video by key points"
-msgstr ""
+msgstr "通过关键点将字幕对齐到视频"
 
 #: ../src/command/time.cpp:252 ../src/command/time.cpp:253
 msgid "Add lead in and out"
@@ -2529,11 +2539,11 @@ msgstr "字幕来源设置为 %s"
 
 #: ../src/command/video.cpp:241 ../src/command/video.cpp:242
 msgid "Reload active subtitles provider"
-msgstr ""
+msgstr "重新载入当前字幕提供程序"
 
 #: ../src/command/video.cpp:243
 msgid "Reloads the current subtitles provider"
-msgstr ""
+msgstr "重新载入当前的字幕提供程序"
 
 #: ../src/command/video.cpp:259
 msgid "&Detach Video"
@@ -2589,13 +2599,13 @@ msgstr "将当前显示的画面复制到剪贴板，不带字幕"
 
 #: ../src/command/video.cpp:340 ../src/command/video.cpp:341
 msgid "Copy image to Clipboard (only subtitles)"
-msgstr ""
+msgstr "复制图像到剪贴板（仅字幕）"
 
 #: ../src/command/video.cpp:342
 msgid ""
 "Copy the currently displayed subtitles to the clipboard, with transparent "
 "background"
-msgstr ""
+msgstr "将当前显示的字幕以透明背景复制到剪贴板"
 
 #: ../src/command/video.cpp:351 ../src/command/video.cpp:352
 msgid "Next Frame"
@@ -2676,13 +2686,13 @@ msgstr "保存当前显示帧（不带字幕）为PNG格式到视频所在目录
 
 #: ../src/command/video.cpp:553 ../src/command/video.cpp:554
 msgid "Save PNG snapshot (only subtitles)"
-msgstr ""
+msgstr "保存 PNG 截图（仅字幕）"
 
 #: ../src/command/video.cpp:555
 msgid ""
 "Save the currently displayed subtitles with transparent background to a PNG "
 "file in the video's directory"
-msgstr ""
+msgstr "将当前显示的字幕以透明背景保存为 PNG 文件到视频目录"
 
 #: ../src/command/video.cpp:565
 msgid "&Jump to..."
@@ -2750,11 +2760,11 @@ msgstr "打开一个纯色的空白视频片段"
 
 #: ../src/command/video.cpp:634 ../src/command/video.cpp:635
 msgid "Reload Video"
-msgstr ""
+msgstr "重新载入视频"
 
 #: ../src/command/video.cpp:636
 msgid "Reload the current video file"
-msgstr ""
+msgstr "重新载入当前视频文件"
 
 #: ../src/command/video.cpp:646 ../src/command/video.cpp:647
 msgid "Toggle autoscroll of video"
@@ -2766,11 +2776,11 @@ msgstr "自动将视频移至所选字幕的开始时间"
 
 #: ../src/command/video.cpp:662 ../src/command/video.cpp:663
 msgid "Reset Video Pan"
-msgstr ""
+msgstr "重置视频平移"
 
 #: ../src/command/video.cpp:664
 msgid "Reset the video pan to the original value"
-msgstr ""
+msgstr "将视频平移重置为原始值"
 
 #: ../src/command/video.cpp:674 ../src/command/video.cpp:675
 msgid "Play"
@@ -2893,11 +2903,11 @@ msgstr "绕X轴和Y轴旋转字幕"
 
 #: ../src/command/vis_tool.cpp:134 ../src/command/vis_tool.cpp:135
 msgid "Apply 3D Perspective"
-msgstr ""
+msgstr "应用 3D 透视"
 
 #: ../src/command/vis_tool.cpp:136
 msgid "Rotate and shear subtitles to make them fit a given quad's perspective"
-msgstr ""
+msgstr "旋转和倾斜字幕，使其匹配指定四边形的透视"
 
 #: ../src/command/vis_tool.cpp:142 ../src/command/vis_tool.cpp:143
 msgid "Scale"
@@ -2925,15 +2935,15 @@ msgstr "裁剪字幕为一个矢量区域"
 
 #: ../src/command/vis_tool.cpp:167 ../src/command/vis_tool.cpp:168
 msgid "Show Surrounding Plane"
-msgstr ""
+msgstr "显示周边平面"
 
 #: ../src/command/vis_tool.cpp:169
 msgid "Toggles showing a second quad for the ambient 3D plane."
-msgstr ""
+msgstr "切换是否显示用于环境 3D 平面的第二个四边形"
 
 #: ../src/command/vis_tool.cpp:176 ../src/command/vis_tool.cpp:177
 msgid "Lock Outer Quad"
-msgstr ""
+msgstr "锁定外侧四边形"
 
 #: ../src/command/vis_tool.cpp:178
 msgid ""
@@ -2941,48 +2951,50 @@ msgid ""
 "If inactive, the inner quad can only be resized without changing the "
 "perspective plane. If active, this holds for the outer quad instead."
 msgstr ""
+"当周边平面可见时，切换要锁定哪个四边形。若未启用，内侧四边形只能在保持透视平面不变的情况下调"
+"整大小；若启用，则改为锁定外侧四边形。"
 
 #: ../src/command/vis_tool.cpp:188 ../src/command/vis_tool.cpp:189
 msgid "Show Grid"
-msgstr ""
+msgstr "显示网格"
 
 #: ../src/command/vis_tool.cpp:190
 msgid "Toggles showing a 3D grid in the visual perspective tool"
-msgstr ""
+msgstr "切换在可视化透视工具中显示 3D 网格"
 
 #: ../src/command/vis_tool.cpp:196 ../src/command/vis_tool.cpp:197
 msgid "\\org Mode: Center"
-msgstr ""
+msgstr "\\org 模式：居中"
 
 #: ../src/command/vis_tool.cpp:198
 msgid "Puts \\org at the center of the perspective quad"
-msgstr ""
+msgstr "将 \\org 置于透视四边形的中心"
 
 #: ../src/command/vis_tool.cpp:212 ../src/command/vis_tool.cpp:213
 msgid "\\org Mode: No \\fax"
-msgstr ""
+msgstr "\\org 模式：无 \\fax"
 
 #: ../src/command/vis_tool.cpp:214
 msgid ""
 "Finds a value for \\org where \\fax can be zero, if possible. Use this mode "
 "if your event contains line breaks."
-msgstr ""
+msgstr "为 \\org 寻找可使 \\fax 为零的值（如有可能）。如果事件中包含换行，请使用此模式。"
 
 #: ../src/command/vis_tool.cpp:228 ../src/command/vis_tool.cpp:229
 msgid "\\org Mode: Keep"
-msgstr ""
+msgstr "\\org 模式：保持"
 
 #: ../src/command/vis_tool.cpp:230
 msgid "Fixes the position of \\org"
-msgstr ""
+msgstr "固定 \\org 的位置"
 
 #: ../src/command/vis_tool.cpp:243 ../src/command/vis_tool.cpp:244
 msgid "Cycle \\org mode"
-msgstr ""
+msgstr "循环切换 \\org 模式"
 
 #: ../src/command/vis_tool.cpp:245
 msgid "Cycles through the three \\org modes"
-msgstr ""
+msgstr "在三种 \\org 模式间循环切换"
 
 #: ../src/command/vis_tool.cpp:277
 msgid "Drag control points"
@@ -3066,66 +3078,66 @@ msgstr "%s 编译于 %s。"
 
 #: ../src/dialog_align.cpp:86
 msgid "Align subtitle to video by key point"
-msgstr ""
+msgstr "按关键点将字幕对齐到视频"
 
 #: ../src/dialog_align.cpp:102 ../src/dialog_align.cpp:103
 #: ../src/dialog_align.cpp:113
 #, c-format
 msgid "%i"
-msgstr ""
+msgstr "%i"
 
 #: ../src/dialog_align.cpp:108
 msgid "The key color to be followed"
-msgstr ""
+msgstr "要跟踪的关键颜色"
 
 #: ../src/dialog_align.cpp:110
 msgid "The x coord of the key point"
-msgstr ""
+msgstr "关键点的 x 坐标"
 
 #: ../src/dialog_align.cpp:112
 msgid "The y coord of the key point"
-msgstr ""
+msgstr "关键点的 y 坐标"
 
 #: ../src/dialog_align.cpp:114
 msgid "Max tolerance of the color"
-msgstr ""
+msgstr "颜色的最大容差"
 
 #: ../src/dialog_align.cpp:121
 msgid "X"
-msgstr ""
+msgstr "X"
 
 #: ../src/dialog_align.cpp:122
 msgid "Y"
-msgstr ""
+msgstr "Y"
 
 #: ../src/dialog_align.cpp:123
 msgid "Color"
-msgstr ""
+msgstr "颜色"
 
 #: ../src/dialog_align.cpp:124
 msgid "Tolerance"
-msgstr ""
+msgstr "容差"
 
 #: ../src/dialog_align.cpp:265
 msgid "Bad x or y position or tolerance value!"
-msgstr ""
+msgstr "x 或 y 坐标或容差值无效！"
 
 #: ../src/dialog_align.cpp:270
 #, c-format
 msgid "Bad x or y position! Require: 0 <= x < %i, 0 <= y < %i"
-msgstr ""
+msgstr "x 或 y 坐标无效！要求：0 <= x < %i，0 <= y < %i"
 
 #: ../src/dialog_align.cpp:275
 msgid "Bad tolerance value! Require: 0 <= torlerance <= 255"
-msgstr ""
+msgstr "容差值无效！要求：0 <= 容差 <= 255"
 
 #: ../src/dialog_align.cpp:297
 msgid "Selected position and color are not within tolerance!"
-msgstr ""
+msgstr "所选位置和颜色不在容差范围内！"
 
 #: ../src/dialog_align.cpp:325
 msgid "Align to video by key point"
-msgstr ""
+msgstr "按关键点对齐到视频"
 
 #: ../src/dialog_attachments.cpp:68
 msgid "Attachment List"
@@ -5278,35 +5290,35 @@ msgstr "选择视频流"
 
 #: ../src/fold_controller.cpp:78
 msgid "add fold"
-msgstr ""
+msgstr "添加折叠组"
 
 #: ../src/fold_controller.cpp:315
 msgid "clear all folds"
-msgstr ""
+msgstr "清除所有折叠组"
 
 #: ../src/fold_controller.cpp:320
 msgid "open all folds"
-msgstr ""
+msgstr "展开所有折叠组"
 
 #: ../src/fold_controller.cpp:325
 msgid "close all folds"
-msgstr ""
+msgstr "收起所有折叠组"
 
 #: ../src/fold_controller.cpp:334
 msgid "clear folds"
-msgstr ""
+msgstr "清除折叠组"
 
 #: ../src/fold_controller.cpp:339
 msgid "open folds"
-msgstr ""
+msgstr "展开折叠组"
 
 #: ../src/fold_controller.cpp:344
 msgid "close folds"
-msgstr ""
+msgstr "收起折叠组"
 
 #: ../src/fold_controller.cpp:349
 msgid "toggle folds"
-msgstr ""
+msgstr "切换折叠组"
 
 #: ../src/font_file_lister.cpp:67
 #, c-format
@@ -5399,11 +5411,11 @@ msgstr "行号"
 
 #: ../src/grid_column.cpp:130
 msgid " >"
-msgstr ""
+msgstr " >"
 
 #: ../src/grid_column.cpp:131
 msgid "Folds"
-msgstr ""
+msgstr "折叠组"
 
 #: ../src/grid_column.cpp:177
 msgid "L"
@@ -5728,15 +5740,15 @@ msgstr "打开视频时自动加载音频"
 
 #: ../src/preferences.cpp:176
 msgid "Default to Video Zoom"
-msgstr ""
+msgstr "默认使用视频缩放"
 
 #: ../src/preferences.cpp:178
 msgid "Disable zooming with scroll bar"
-msgstr ""
+msgstr "禁用滚动条缩放"
 
 #: ../src/preferences.cpp:180
 msgid "Reverse zoom direction"
-msgstr ""
+msgstr "反转缩放方向"
 
 #: ../src/preferences.cpp:184
 msgid "Default Zoom"
@@ -5844,15 +5856,15 @@ msgstr "隐藏特效标签"
 
 #: ../src/preferences.cpp:233
 msgid "Skip over whitespace"
-msgstr ""
+msgstr "跳过空白"
 
 #: ../src/preferences.cpp:235
 msgid "Colour Picker"
-msgstr ""
+msgstr "取色器"
 
 #: ../src/preferences.cpp:236
 msgid "Restrict Screen Picker to Window"
-msgstr ""
+msgstr "限制屏幕取色仅在窗口内"
 
 #: ../src/preferences.cpp:251
 msgid "Audio Display"
@@ -5896,19 +5908,19 @@ msgstr "注释"
 
 #: ../src/preferences.cpp:263
 msgid "Drawing Commands"
-msgstr ""
+msgstr "绘图命令"
 
 #: ../src/preferences.cpp:264
 msgid "Drawing X Coords"
-msgstr ""
+msgstr "绘图 X 坐标"
 
 #: ../src/preferences.cpp:265
 msgid "Drawing Y Coords"
-msgstr ""
+msgstr "绘图 Y 坐标"
 
 #: ../src/preferences.cpp:266
 msgid "Underline Spline Endpoints"
-msgstr ""
+msgstr "为样条线端点添加下划线"
 
 #: ../src/preferences.cpp:268
 msgid "Brackets"
@@ -5992,11 +6004,11 @@ msgstr "选中注释行背景色"
 
 #: ../src/preferences.cpp:296
 msgid "Open fold background"
-msgstr ""
+msgstr "展开折叠组背景"
 
 #: ../src/preferences.cpp:297
 msgid "Closed fold background"
-msgstr ""
+msgstr "收起折叠组背景"
 
 #: ../src/preferences.cpp:298
 msgid "Header background"
@@ -6020,31 +6032,31 @@ msgstr "每秒字符数错误"
 
 #: ../src/preferences.cpp:304
 msgid "Visual Typesetting Tools"
-msgstr ""
+msgstr "可视化排版工具"
 
 #: ../src/preferences.cpp:305
 msgid "Primary Lines"
-msgstr ""
+msgstr "主要线条"
 
 #: ../src/preferences.cpp:306
 msgid "Secondary Lines"
-msgstr ""
+msgstr "次要线条"
 
 #: ../src/preferences.cpp:307
 msgid "Primary Highlight"
-msgstr ""
+msgstr "主要高亮"
 
 #: ../src/preferences.cpp:308
 msgid "Secondary Highlight"
-msgstr ""
+msgstr "次要高亮"
 
 #: ../src/preferences.cpp:311
 msgid "Visual Typesetting Tools Alpha"
-msgstr ""
+msgstr "可视化排版工具透明度"
 
 #: ../src/preferences.cpp:312
 msgid "Shaded Area"
-msgstr ""
+msgstr "阴影区域"
 
 #: ../src/preferences.cpp:321
 msgid "Backup"
@@ -6201,27 +6213,27 @@ msgstr "质量"
 
 #: ../src/preferences.cpp:399
 msgid "Compressed"
-msgstr ""
+msgstr "压缩"
 
 #: ../src/preferences.cpp:399
 msgid "Extended"
-msgstr ""
+msgstr "扩展"
 
 #: ../src/preferences.cpp:399
 msgid "Linear"
-msgstr ""
+msgstr "线性"
 
 #: ../src/preferences.cpp:399
 msgid "Logarithmic"
-msgstr ""
+msgstr "对数"
 
 #: ../src/preferences.cpp:399
 msgid "Medium"
-msgstr ""
+msgstr "中等"
 
 #: ../src/preferences.cpp:401
 msgid "Frequency mapping"
-msgstr ""
+msgstr "频率映射"
 
 #: ../src/preferences.cpp:403
 msgid "Cache memory max (MB)"
@@ -6257,15 +6269,15 @@ msgstr "总是索引所有音轨"
 
 #: ../src/preferences.cpp:421
 msgid "Downmix to stereo"
-msgstr ""
+msgstr "混音为立体声"
 
 #: ../src/preferences.cpp:427
 msgid "Max BS cache size (MB)"
-msgstr ""
+msgstr "BestSource 最大缓存大小（MB）"
 
 #: ../src/preferences.cpp:428
 msgid "Use Aegisub's Cache"
-msgstr ""
+msgstr "使用 Aegisub 的缓存"
 
 #: ../src/preferences.cpp:434
 msgid "Portaudio device"
@@ -6309,27 +6321,27 @@ msgstr "允许可能不安全的定位"
 
 #: ../src/preferences.cpp:482
 msgid "Max cache size (MB)"
-msgstr ""
+msgstr "最大缓存大小（MB）"
 
 #: ../src/preferences.cpp:483
 msgid "Decoder Threads (0 to autodetect)"
-msgstr ""
+msgstr "解码线程数（0 为自动检测）"
 
 #: ../src/preferences.cpp:484
 msgid "Seek preroll (Frames)"
-msgstr ""
+msgstr "搜索预卷（帧）"
 
 #: ../src/preferences.cpp:492
 msgid "VapourSynth"
-msgstr ""
+msgstr "VapourSynth"
 
 #: ../src/preferences.cpp:497
 msgid "Log Level"
-msgstr ""
+msgstr "日志级别"
 
 #: ../src/preferences.cpp:499
 msgid "Default Video Script"
-msgstr ""
+msgstr "默认视频脚本"
 
 #: ../src/preferences.cpp:501
 msgid ""
@@ -6337,10 +6349,12 @@ msgid ""
 "VapourSynth scripts (i.e. end in .py or .vpy).\n"
 "The filename variable stores the path to the file."
 msgstr ""
+"此脚本将用于加载不是 VapourSynth 脚本（即以 .py 或 .vpy 结尾）的视频文件。\n"
+"filename 变量存储文件的路径。"
 
 #: ../src/preferences.cpp:509
 msgid "Default Audio Script"
-msgstr ""
+msgstr "默认音频脚本"
 
 #: ../src/preferences.cpp:510
 msgid ""
@@ -6348,6 +6362,8 @@ msgid ""
 "VapourSynth scripts (i.e. end in .py or .vpy).\n"
 "The filename variable stores the path to the file."
 msgstr ""
+"此脚本将用于加载不是 VapourSynth 脚本（即以 .py 或 .vpy 结尾）的音频文件。\n"
+"filename 变量存储文件的路径。"
 
 #: ../src/preferences.cpp:648
 msgid "Hotkeys"
@@ -6767,15 +6783,15 @@ msgstr "该帧时间，相对于当前字幕的开始与结束时间"
 
 #: ../src/video_provider_bestsource.cpp:128
 msgid "Scanning"
-msgstr ""
+msgstr "正在扫描"
 
 #: ../src/video_provider_vs.cpp:137
 msgid "Executing VapourSynth Script"
-msgstr ""
+msgstr "正在执行 VapourSynth 脚本"
 
 #: ../src/video_provider_vs.cpp:147
 msgid "Failed to execute script! Press \"Close\" to continue."
-msgstr ""
+msgstr "脚本执行失败！请按“关闭”继续。"
 
 #: ../src/visual_tool.cpp:129
 msgid "visual typesetting"
@@ -6847,7 +6863,7 @@ msgstr "自动化(&U)"
 
 #: default_menu.json:0
 msgid "Export As..."
-msgstr ""
+msgstr "导出为…"
 
 #: default_menu.json:0
 msgid "Insert (after)"
@@ -6879,11 +6895,11 @@ msgstr "使时间连续"
 
 #: default_menu.json:0
 msgid "Open Recent"
-msgstr ""
+msgstr "打开最近使用"
 
 #: default_menu.json:0
 msgid "Open..."
-msgstr ""
+msgstr "打开…"
 
 #: default_menu.json:0
 msgid "Override &AR"
@@ -6891,11 +6907,11 @@ msgstr "更改纵横比(&A)"
 
 #: default_menu.json:0
 msgid "Save"
-msgstr ""
+msgstr "保存"
 
 #: default_menu.json:0
 msgid "Save As..."
-msgstr ""
+msgstr "另存为…"
 
 #: default_menu.json:0
 msgid "Set &Zoom"
@@ -6915,7 +6931,7 @@ msgstr "查看(&W)"
 
 #: default_menu.json:0
 msgid "Window"
-msgstr ""
+msgstr "窗口"
 
 #: packages/win_installer/fragment_strings.iss:1
 msgid "Automatically check for new versions of Aegisub"
@@ -7130,7 +7146,7 @@ msgstr "硬字幕"
 msgid "Region and Text"
 msgstr "区域与文本"
 
-#: ../src/dialog_hardsub_scan.cpp
+#: ../src/dialog_hardsub_scan.cpp ../src/dialog_hardsub_scan_video.cpp
 msgid "Select Region on Video"
 msgstr "在视频上选择区域"
 
@@ -7162,7 +7178,7 @@ msgstr "文本匹配度（%）"
 msgid "Confirm frames"
 msgstr "确认帧数"
 
-#: ../src/dialog_hardsub_scan.cpp
+#: ../src/dialog_hardsub_scan.cpp ../src/dialog_hardsub_scan_video.cpp
 msgid "Min duration (frames)"
 msgstr "最短时长（帧）"
 
@@ -7244,7 +7260,7 @@ msgstr ""
 msgid "Verifying boundaries with OCR..."
 msgstr "正在使用 OCR 验证边界…"
 
-#: ../src/dialog_hardsub_scan.cpp
+#: ../src/dialog_hardsub_scan.cpp ../src/dialog_hardsub_scan_video.cpp
 msgid "Scan cancelled."
 msgstr "扫描已取消。"
 
@@ -7281,7 +7297,7 @@ msgstr "插入硬字幕行"
 msgid "Subtitle line inserted."
 msgstr "字幕行已插入。"
 
-#: ../src/dialog_hardsub_scan.cpp
+#: ../src/dialog_hardsub_scan.cpp ../src/dialog_hardsub_scan_video.cpp
 msgid "Copied to clipboard."
 msgstr "已复制到剪贴板。"
 
@@ -7297,11 +7313,11 @@ msgstr "OCR 运行时启动失败。"
 msgid "No OCR result could be read for the region."
 msgstr "无法读取该区域的 OCR 结果。"
 
-#: ../src/dialog_hardsub_scan.cpp
+#: ../src/dialog_hardsub_scan.cpp ../src/dialog_hardsub_scan_video.cpp
 msgid "Hard subtitle scan failed: %s"
 msgstr "硬字幕扫描失败：%s"
 
-#: ../src/dialog_hardsub_scan.cpp
+#: ../src/dialog_hardsub_scan.cpp ../src/dialog_hardsub_scan_video.cpp
 msgid "Hard subtitle scan failed with an unknown error."
 msgstr "硬字幕扫描因未知错误失败。"
 
@@ -7595,10 +7611,6 @@ msgid "Scan Region"
 msgstr "扫描区域"
 
 #: ../src/dialog_hardsub_scan_video.cpp
-msgid "Select Region on Video"
-msgstr "在视频上选择区域"
-
-#: ../src/dialog_hardsub_scan_video.cpp
 msgid "Region Size"
 msgstr "区域大小"
 
@@ -7629,10 +7641,6 @@ msgstr "居中范围（%）"
 #: ../src/dialog_hardsub_scan_video.cpp
 msgid "Rows whose horizontal center lies inside the middle this many percent of the region are kept; 100 disables the filter."
 msgstr "仅保留水平中心位于区域中部该百分比范围内的行；设为 100 可关闭此过滤。"
-
-#: ../src/dialog_hardsub_scan_video.cpp
-msgid "Min duration (frames)"
-msgstr "最短时长（帧）"
 
 #: ../src/dialog_hardsub_scan_video.cpp
 msgid "OCR every (frames)"
@@ -7695,16 +7703,8 @@ msgid "Scanning..."
 msgstr "正在扫描…"
 
 #: ../src/dialog_hardsub_scan_video.cpp
-msgid "Scan cancelled."
-msgstr "扫描已取消。"
-
-#: ../src/dialog_hardsub_scan_video.cpp
 msgid "Scan complete: %d lines detected."
 msgstr "扫描完成：检测到 %d 行。"
-
-#: ../src/dialog_hardsub_scan_video.cpp
-msgid "Copied to clipboard."
-msgstr "已复制到剪贴板。"
 
 #: ../src/dialog_hardsub_scan_video.cpp
 msgid "Inserted %d lines."
@@ -7735,14 +7735,6 @@ msgid "The scan was interrupted by an internal error (0x%08X)."
 msgstr "扫描因内部错误而中断（0x%08X）。"
 
 #: ../src/dialog_hardsub_scan_video.cpp
-msgid "Hard subtitle scan failed: %s"
-msgstr "硬字幕扫描失败：%s"
-
-#: ../src/dialog_hardsub_scan_video.cpp
-msgid "Hard subtitle scan failed with an unknown error."
-msgstr "硬字幕扫描因未知错误而失败。"
-
-#: ../src/dialog_hardsub_scan_video.cpp
 msgid "Frame %d / %d (%d%%)  |  elapsed "
 msgstr "帧 %d / %d（%d%%）  |  已用时 "
 
@@ -7760,74 +7752,52 @@ msgstr "插入硬字幕行"
 
 #~ msgid "    Subtitle format handler: %s"
 #~ msgstr "    字幕格式处理器： %s"
-
 #~ msgid "%d frames (%s)"
 #~ msgstr "%d 帧  (%s)"
-
 #~ msgid "%u lines were added to selection"
 #~ msgstr "%u 行已被加入所选"
-
 #~ msgid "%u lines were removed from selection"
 #~ msgstr " %u 行已被移出所选"
-
 #~ msgid "&Change aspect ratio"
 #~ msgstr "更改纵横比(&C)"
-
 #~ msgid "&Export As..."
 #~ msgstr "导出(&E)…"
-
 #~ msgid "&Forums"
 #~ msgstr "论坛(&F)…"
-
 #~ msgid "Allow pre-2.56a Avisynth"
 #~ msgstr "允许使用2.56a之前版本的Avisynth"
-
 #~ msgid "Are you sure you want to delete these %d styles?"
 #~ msgstr "您确定要删除这个 %d 样式？"
-
 #~ msgid "Below Normal (recommended)"
 #~ msgstr "低于正常（推荐）"
-
 #~ msgid "Clean Script Info"
 #~ msgstr "清除脚本信息"
-
 #~ msgid "Drawings"
 #~ msgstr "绘图代码"
-
 #~ msgid "File name"
 #~ msgstr "文件名："
-
 #~ msgid "Force BT.601"
 #~ msgstr "强制使用 BT.601"
-
 #~ msgid "Forums"
 #~ msgstr "论坛"
-
 #~ msgid "Lowest"
 #~ msgstr "最低"
-
 #~ msgid "Reading into RAM"
 #~ msgstr "读取至内存"
-
 #~ msgid "Reading to Hard Disk cache"
 #~ msgstr "读取到磁盘缓存"
-
 #~ msgid ""
 #~ "Removes all but the absolutely required fields from the Script Info "
 #~ "section. You might want to run this on files that you plan to distribute "
 #~ "in original form."
 #~ msgstr ""
 #~ "移除脚本配置中所有不必要的信息。您可以将其用于要以原始形式分发的文件。"
-
 #~ msgid "Selection was set to %u lines"
 #~ msgstr "所选被设为 %u 行"
-
 #~ msgid "Thread priority"
 #~ msgstr "线程优先级"
-
 #~ msgid "Visit Aegisub's forums"
 #~ msgstr "访问Aegisub的论坛"
-
 #~ msgid ""
 #~ "You already have timecodes loaded. Would you like to replace them with "
 #~ "timecodes from the video file?"
