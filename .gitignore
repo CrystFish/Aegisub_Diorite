@@ -44,6 +44,7 @@ subprojects/luajit
 subprojects/nasm-*
 subprojects/packagecache/*
 !subprojects/packagecache/soundtouch-2.3.3.tar.gz
+!subprojects/packagecache/uchardet-0.0.7.tar.gz
 subprojects/proxy-libintl*
 subprojects/soundtouch/
 subprojects/wxWidgets
