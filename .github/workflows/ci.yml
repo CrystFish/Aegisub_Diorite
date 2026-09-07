@@ -43,6 +43,7 @@ jobs:
               -Dbestsource=enabled
               -Dvapoursynth=enabled
               -Dpaddleocr=enabled
+              -Dwx_version='3.3.1'
               -Dopencv=enabled
               -Dwith_mangetsu=true
 

@@ -1,14 +1,12 @@
 # Aegisub Diorite
 
-一个基于 [Aegisub Toshi-ban](https://github.com/amanosatosi/Aegisub_Toshi-ban) 的、方便直接在字幕中插入本地化文本的改版。
+一个基于 [Aegisub Toshi-ban](https://github.com/amanosatosi/Aegisub_Toshi-ban) 的、方便直接在字幕中插入本地化文本的 Aegisub 改版。
 
-## 使用前须知
+> ### 所有代码更改均借助 AI 完成。
+> 
+> 使用过程中有可能会出现预料之外的行为，使用该版本即代表您已充分理解并能够接受这种风险。
 
-所有代码均使用 Deepseek-V4-Fiash 修改。
-
-使用时可能会出现预料之外的行为，使用该版本即代表您已充分理解并能够接受这种风险。
-
-本项目无法保证会积极修复 Bug，也无法保证未来仍会积极维护。
+当前阶段建议使用 Portable（便携版），以免不同版本的 Aegisub 配置文件出现冲突。
 
 ## 新功能/改动
 
