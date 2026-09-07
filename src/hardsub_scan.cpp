@@ -373,11 +373,18 @@ bool BoundaryAmbiguous(ScanResult const& result, double threshold_exit, bool sta
 
 	size_t idx = static_cast<size_t>(it - result.frames.begin());
 	for (size_t off = 1; off <= 2; ++off) {
+		if (start && off > idx)
+			break;
 		size_t at = start ? idx - off : idx + off;
-		if (at >= result.frames.size())
+		if (!start && at >= result.frames.size())
 			break;
 		int f = start ? boundary - static_cast<int>(off) : boundary + static_cast<int>(off);
-		if (result.frames[at] == f && result.diffs[at] >= threshold_exit)
+		// A frame that should sit just outside the boundary is missing from
+		// the evidence series: the series is not dense enough to rule out a
+		// fade, so report the boundary as ambiguous.
+		if (result.frames[at] != f)
+			return true;
+		if (result.diffs[at] >= threshold_exit)
 			return true;
 	}
 	return false;

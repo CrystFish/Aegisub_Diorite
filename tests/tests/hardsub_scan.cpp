@@ -104,13 +104,15 @@ TEST(hardsub_scan, crop_region_yuv420p) {
 	auto right = CropRegion(frame, 2, 0, 2, 1);
 	ASSERT_TRUE(left.Valid());
 	ASSERT_TRUE(right.Valid());
-	// BT.709 limited range: white 235 -> (235, 235, 235), black 16 -> (16,16,16)
-	EXPECT_NEAR(left.rgb[0], 235, 2);
-	EXPECT_NEAR(left.rgb[1], 235, 2);
-	EXPECT_NEAR(left.rgb[2], 235, 2);
-	EXPECT_NEAR(right.rgb[0], 16, 2);
-	EXPECT_NEAR(right.rgb[1], 16, 2);
-	EXPECT_NEAR(right.rgb[2], 16, 2);
+	// BT.709 limited-range input expanded to full-range RGB, matching the
+	// provider's BGRA output: white (Y=235) -> (255,255,255), black (Y=16)
+	// -> (0,0,0).
+	EXPECT_NEAR(left.rgb[0], 255, 2);
+	EXPECT_NEAR(left.rgb[1], 255, 2);
+	EXPECT_NEAR(left.rgb[2], 255, 2);
+	EXPECT_NEAR(right.rgb[0], 0, 2);
+	EXPECT_NEAR(right.rgb[1], 0, 2);
+	EXPECT_NEAR(right.rgb[2], 0, 2);
 }
 
 TEST(hardsub_scan, crop_region_nv12) {
@@ -132,9 +134,10 @@ TEST(hardsub_scan, crop_region_nv12) {
 
 	auto left = CropRegion(frame, 0, 0, 2, 1);
 	ASSERT_TRUE(left.Valid());
-	EXPECT_NEAR(left.rgb[0], 235, 2);
-	EXPECT_NEAR(left.rgb[1], 235, 2);
-	EXPECT_NEAR(left.rgb[2], 235, 2);
+	// Same full-range expansion as the planar yuv420p case.
+	EXPECT_NEAR(left.rgb[0], 255, 2);
+	EXPECT_NEAR(left.rgb[1], 255, 2);
+	EXPECT_NEAR(left.rgb[2], 255, 2);
 }
 
 TEST(hardsub_scan, mean_abs_diff) {
